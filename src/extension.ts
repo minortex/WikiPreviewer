@@ -765,6 +765,10 @@ function activate(context: vscode.ExtensionContext): void {
         setTimeout(() => {
           dirtyTimers.delete(fsPath);
           notifyDirty(event.document);
+          // A clean document whose content just changed was reloaded from disk
+          // (external editor) or equals disk after an undo/auto-save: treat it
+          // like a save and push, since the browser has no other way to see it.
+          if (!event.document.isDirty) push(event.document);
         }, 120),
       );
     }),
