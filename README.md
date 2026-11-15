@@ -4,137 +4,142 @@
 
 # WikiPreviewer
 
-[English](README.en.md) | 简体中文
+English | [简体中文](README.zh.md)
 
-### 让你的实时编辑在浏览器上直接渲染
+### Your live edits, rendered straight in the browser
 
-用 VSCode 作为编辑器，把浏览器当做渲染器的 InPageEdit+VSCode Plugin 组合项目。
+A combined InPageEdit + VSCode Plugin project that uses VSCode as the editor and the browser as the renderer.
+
+<p align="center">
+  <a href="https://github.com/minortex/WikiPreviewer/releases/latest"><img src="https://img.shields.io/github/v/release/minortex/WikiPreviewer?label=release&amp;color=111111" alt="release"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=minortex.wiki-previewer"><img src="https://vsmarketplacebadges.dev/version-short/minortex.wiki-previewer.svg" alt="VS Marketplace version"></a>
+  <!-- <a href="https://marketplace.visualstudio.com/items?itemName=minortex.wiki-previewer"><img src="https://vsmarketplacebadges.dev/installs-short/minortex.wiki-previewer.svg" alt="VS Marketplace installs"></a> -->
+  <a href="https://open-vsx.org/extension/minortex/wiki-previewer"><img src="https://img.shields.io/open-vsx/v/minortex/wiki-previewer" alt="Open VSX version"></a>
+  <br>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="license"></a>
+  <a href="https://github.com/minortex/WikiPreviewer/actions/workflows/build-dev.yml"><img src="https://github.com/minortex/WikiPreviewer/actions/workflows/build-dev.yml/badge.svg" alt="CI"></a>
+  <a href="https://minortex.github.io/WikiPreviewer/ipe-plugin/registry.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fminortex.github.io%2FWikiPreviewer%2Fipe-plugin%2Fregistry.json&amp;query=%24.packages%5B0%5D.version&amp;label=IPE-Plugin" alt="IPE-Plugin"></a>
+</p>
 
 </div>
 
-## 安装
+## Installation
 
-### VSXI
+### VSIX
 
 - [open-vsx.org](https://open-vsx.org/extension/minortex/wiki-previewer)
 
 - [vscode-marketplace](https://marketplace.visualstudio.com/items?itemName=minortex.wiki-previewer)
 
-开发版可在 actions -> artifacts 获取。
+### IPE NEXT plugin
 
-### IPE NEXT 插件
-
-先参考[IPE 安装指南](https://www.ipe.wiki/guide/installation)安装 IPE，
-然后在 InPageEdit 设置 → 插件商店添加注册表：
+Install IPE first by following the [IPE installation guide](https://www.ipe.wiki/guide/installation),
+then add the registry in InPageEdit Settings → Plugin Store:
 
 ```
 https://minortex.github.io/WikiPreviewer/ipe-plugin/registry.json
 ```
 
-开发版：
+Development version:
 ```
 https://minortex.github.io/WikiPreviewer/ipe-plugin/dev/registry.json
 ```
 
-安装后需要：
+After installing:
 
-- 允许访问本地设备，以连接到拓展建立的本地服务。
-- 如果需要在 VSCode 里面跳转到定义，第一次需要在浏览器允许打开页面。
+- Allow access to local devices so the plugin can connect to the local service the extension starts.
+- To jump to definitions from VSCode, allow the page to open in the browser the first time.
 
-## 使用
+## Usage
 
-以拓展为主，因为其真正持有用户未保存的改动，网页只负责推送站点内容和渲染，
-并附加到拓展上面可随时关闭。
+The extension leads, because it is what actually holds the user's unsaved changes; the web page only pushes site content and renders it, attaching to the extension so it can be closed at any time.
 
-2. 网页端：
-   - 点击多出的第五个灰色按钮可以进行整页编辑。
-   - 点“保存更改”可以进行提交。
-   - 点“取消”，如果没有更改自动恢复原页面并关闭编辑器，如果有更改询问是否需要保存。
-   - 同一页面的多个标签页可以同时连接到同一个编辑会话：编辑器的内容更新会推送到所有已连接的标签页，任一标签页的保存或取消都会结束同一会话。
+1. Web side:
+   - Click the extra fifth grey button to edit the whole page.
+   - Click "Save changes" to submit.
+   - Click "Cancel": with no changes the original page is restored and the editor closes automatically; with changes it asks whether to save.
+   - Multiple tabs of the same page can attach to one editing session: editor updates are pushed to every attached tab, and saving or cancelling in any tab ends that session.
 
-3. 拓展端：
-- 编辑相关命令：
-  - 关闭编辑器/关闭编辑会话：
-    - 内容与原始页面不同时，询问保存或放弃。
-    - 没有修改时，直接关闭编辑器标签并删除临时文件。
-    - 关闭时会尝试关闭派生的浏览器页面。
-    - 编辑器异常退出时并重新开启：VSCode 自行恢复的编辑器标签会继续作为会话使用。
-  - 恢复编辑草稿：
-    - 若因为某些原因未恢复，可以手动从本地文件中读取并恢复编辑会话。
-  - 通过 IPE 保存当前文件：
-    - 等同于网页端的保存更改。
-    - 保存时若发生编辑冲突，合并冲突点到编辑器便于手工合并。
-  - 通过浏览器打开当前条目。
+2. Extension side:
+- Editing commands:
+  - Close editor / close editing session:
+    - When the content differs from the original page, ask whether to save or discard.
+    - When nothing changed, close the editor tab and delete the temp file directly.
+    - Closing also tries to close the browser page spawned for the session.
+    - If the editor exits unexpectedly and is reopened, editor tabs restored by VSCode keep working as sessions.
+  - Restore editing draft:
+    - If a draft was not restored for some reason, read it from the local file and restore the editing session manually.
+  - Save the current file via IPE:
+    - Same as "Save changes" on the web side.
+    - If an edit conflict occurs on save, the conflict markers are written into the editor for manual merging.
+  - Open the current page in the browser.
 
-你如果想了解四种状态转移的话...
+If you want to understand the four state transitions...
 
 <details>
-<summary>展开</summary>
+<summary>Expand</summary>
 
 ```mermaid
 stateDiagram-v2
     direction LR
 
-    state "Start (开始编辑)" as Start
-    state "Draft（草稿）" as Draft
-    state "Attached（浏览器已连接）" as Attached
-    state "Detached（浏览器已断开）" as Detached
-    state "Awaiting（等待确认）" as Awaiting
-    state "Completed（完成一次编辑）" as Completed
-    state "拓展服务不在线" as Offline
+    state "Start (begin editing)" as Start
+    state "Draft" as Draft
+    state "Attached (browser connected)" as Attached
+    state "Detached (browser disconnected)" as Detached
+    state "Awaiting (waiting for confirmation)" as Awaiting
+    state "Completed (one edit finished)" as Completed
+    state "Extension service offline" as Offline
 
     Start --> Attached
-    Detached --> Attached: 浏览器 query / attach
-    Attached --> Detached: 浏览器关闭 / WebSocket close
-    Attached --> Draft: 编辑器 close（VSC 未关闭）<br/>保存失败（不删除文件）
-    Draft --> Attached: 恢复草稿 / query 接管
+    Detached --> Attached: browser query / attach
+    Attached --> Detached: browser closed / WebSocket close
+    Attached --> Draft: editor close (VSC stays open)<br/>save failed (file kept)
+    Draft --> Attached: restore draft / query takeover
     Attached --> Awaiting: finish, saved
-    Awaiting --> Completed: save-confirmed + revid, 删除临时文件
-    Awaiting --> Attached: conflict, 内容加入合并编辑器
-  
-    Offline --> Attached: 手动恢复编辑会话
-    Attached --> Offline: 编辑器异常关闭
+    Awaiting --> Completed: save-confirmed + revid, temp file deleted
+    Awaiting --> Attached: conflict, content merged into the editor
+
+    Offline --> Attached: restore the editing session manually
+    Attached --> Offline: editor closed unexpectedly
 ```
 
-| 状态 | 含义 |
+| State | Meaning |
 |---|---|
-| `Attached` | 浏览器 WebSocket 已连接，当前窗口正在编辑 |
-| `Detached` | 会话还在，但浏览器连接已断开 |
-| `Draft` | VSCode 编辑器已关闭，临时文件保留为草稿 |
-| `Awaiting` | 已提交成功，等待浏览器携带新修订版本号（revid）确认；确认后才删除临时文件 |
-
-
+| `Attached` | The browser WebSocket is connected and the current window is being edited |
+| `Detached` | The session still exists, but the browser connection has dropped |
+| `Draft` | The VSCode editor was closed; the temp file is kept as a draft |
+| `Awaiting` | Submitted successfully, waiting for the browser to confirm with the new revision id (revid); the temp file is deleted only after that confirmation |
 
 </details>
 
-## 多 wiki
+## Multiple wikis
 
-- 网页端脚本连接扩展后，会携带浏览器登录态请求本站`siteinfo`，通过`register-wiki`消息推送给扩展
-- 命令面板可以查看已经连接过的 wiki。
+- Once connected to the extension, the web-side script requests the local site's `siteinfo` with the browser's login state and pushes it to the extension through the `register-wiki` message.
+- The command palette lists the wikis that have been connected.
 
-临时文件按站点主机分目录：`<tempDir>/<host>/<页面名>[.s<节号>].<时间戳>.wiki`。
+Temp files are laid out per site host: `<tempDir>/<host>/<page name>[.s<section>].<timestamp>.wiki`.
 
-## 语言功能
+## Language features
 
-由 `wikiparser-node` 驱动：诊断与快速修复、语法/语义高亮、补全、Hover、签名帮助、折叠、大纲、内链、定义/引用/重命名。定义跳转通过浏览器打开目标页；引用与重命名仅限当前文档。
+Powered by `wikiparser-node`: diagnostics and quick fixes, syntax/semantic highlighting, completion, hover, signature help, folding, outline, internal links, definitions/references/rename. Go-to-definition opens the target page in the browser; references and rename are limited to the current document.
 
-补全在 wikiparser 的上下文补全之外，还提供结构片段：标题、表格、引号、标签、重定向、签名、注释等。接受解析函数补全（`#if`、`#switch`、`#invoke` 等）时会生成带参数占位符的骨架。`{{{`、`{{`、`[[`、`{|`、`<!--`、`-{` 会自动闭合；`<nowiki>`、`<pre>`、注释等区域不提供片段。
+Beyond wikiparser's context completion, completion also offers structural snippets: headings, tables, quotes, tags, redirects, signatures, comments and more. Accepting a parser-function completion (`#if`, `#switch`, `#invoke`, …) generates a skeleton with parameter placeholders. `{{{`, `{{`, `[[`, `{|`, `<!--` and `-{` auto-close; no snippets are offered inside `<nowiki>`, `<pre>`, comments and similar regions.
 
-## 位置同步
+## Position sync
 
-网页随着光标同步位置，在网页中双击可以将位置同步到编辑器。
+The web page follows the cursor position, and double-clicking in the page syncs that position back to the editor.
 
-启发式搜索，因为 Parsoid 会导致排版出错，而 DSR 几乎没有 wiki 支持精确定位。
+Heuristic matching, because Parsoid breaks the layout and DSR has almost no wiki support for precise positioning.
 
-- 编辑器 → 预览：AST 文本项 + section + occurrence，在预览同 section 内定位。
-- 预览 → 源码：点击处文本 + section + occurrence 反查；失败时逐行文本兜底。
-- 无文本模板：按模板名/参数/section/序号匹配展开块；失败时高亮整个 section。
+- Editor → preview: AST text node + section + occurrence, located inside the same section of the preview.
+- Preview → source: text at the click point + section + occurrence, looked up in reverse; falls back to line-by-line text matching on failure.
+- Textless templates: matched against expanded blocks by template name/parameters/section/index; falls back to highlighting the whole section.
 
-虽然已经尽可能保证大部分情况能跳转，但遇到复杂的排版还是有可能正查/反查失败。
+Most cases do jump, but complex layouts can still break forward or reverse matching.
 
+## UI language
 
-## 界面语言
+Runtime messages have English as their source and switch automatically with VS Code's display language through `vscode.l10n`; Simplified Chinese is bundled today (`l10n/bundle.l10n.zh-cn.json`). Manifest text such as command titles and settings uses `package.nls*.json`.
 
-扩展的运行时提示语以英文为源，通过 `vscode.l10n` 按 VS Code 的显示语言自动切换；当前内置简体中文翻译（`l10n/bundle.l10n.zh-cn.json`）。命令标题、配置项等 `package.json` 文案使用 `package.nls*.json`。
-
-新增语言时，复制 `l10n/bundle.l10n.zh-cn.json` 为对应 locale 文件（如 `bundle.l10n.ja.json`），翻译值即可；键名必须与源码中的英文原文一致。切换 VS Code 显示语言可通过命令面板「Configure Display Language」。
+To add a language, copy `l10n/bundle.l10n.zh-cn.json` to the matching locale file (e.g. `bundle.l10n.ja.json`) and translate the values; keys must match the English source strings exactly. To change the VS Code display language, run "Configure Display Language" from the command palette.

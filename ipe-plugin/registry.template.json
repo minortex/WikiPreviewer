@@ -6,7 +6,7 @@
   "packages": [
     {
       "id": "wiki-previewer-ipe",
-      "name": "WikiPreviewer",
+      "name": "WikiPreviewer-Plugin",
       "description": "Edit MediaWiki pages in VSCode with live preview and InPageEdit save.",
       "author": "minortex",
       "license": "GPL-3.0-or-later"

@@ -1,4 +1,4 @@
-name: Publish extension to VS Marketplace
+name: Release and publish extension
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 concurrency:
@@ -39,6 +39,22 @@ jobs:
       - run: npm test
       - name: Package VSIX
         run: npm run package:vsix
+      - name: Attach VSIX to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          file="dist/wiki-previewer-${version}.vsix"
+          test -f "$file"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$file" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$file" \
+              --title "WikiPreviewer $GITHUB_REF_NAME" \
+              --generate-notes \
+              --verify-tag
+          fi
       - name: Publish to VS Marketplace
         run: |
           version="$(node -p "require('./package.json').version")"
