@@ -2,7 +2,7 @@
   "name": "wiki-previewer",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "publisher": "minortex",
   "license": "GPL-3.0-or-later",
   "icon": "assets/icon.png",
