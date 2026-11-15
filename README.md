@@ -56,14 +56,13 @@ The extension leads, because it is what actually holds the user's unsaved change
 
 1. Web side:
    - Click the extra fifth grey button to edit the whole page.
-   - Click "Save changes" to submit.
    - Click "Cancel": with no changes the original page is restored and the editor closes automatically; with changes it asks whether to save.
    - Multiple tabs of the same page can attach to one editing session: editor updates are pushed to every attached tab, and saving or cancelling in any tab ends that session.
 
 2. Extension side:
 - Editing commands:
   - Close editor / close editing session:
-    - When the content differs from the original page, ask whether to save or discard.
+    - When the content changed, ask whether to save or discard.
     - When nothing changed, close the editor tab and delete the temp file directly.
     - Closing also tries to close the browser page spawned for the session.
     - If the editor exits unexpectedly and is reopened, editor tabs restored by VSCode keep working as sessions.
@@ -71,8 +70,12 @@ The extension leads, because it is what actually holds the user's unsaved change
     - If a draft was not restored for some reason, read it from the local file and restore the editing session manually.
   - Save the current file via IPE:
     - Same as "Save changes" on the web side.
-    - If an edit conflict occurs on save, the conflict markers are written into the editor for manual merging.
   - Open the current page in the browser.
+
+### Features
+
+- If an edit conflict occurs on save, the conflict markers are written into the editor for manual merging.
+- With a page and one of its transcluded templates open at the same time, editing and saving the template file re-renders the page with the updated template automatically.
 
 If you want to understand the four state transitions...
 
@@ -115,14 +118,14 @@ stateDiagram-v2
 
 ## Multiple wikis
 
+The first time a page is sent from the web side, the extension remembers that wiki site.
+
 - Once connected to the extension, the web-side script requests the local site's `siteinfo` with the browser's login state and pushes it to the extension through the `register-wiki` message.
 - The command palette lists the wikis that have been connected.
 
-Temp files are laid out per site host: `<tempDir>/<host>/<page name>[.s<section>].<timestamp>.wiki`.
-
 ## Language features
 
-Powered by `wikiparser-node`: diagnostics and quick fixes, syntax/semantic highlighting, completion, hover, signature help, folding, outline, internal links, definitions/references/rename. Go-to-definition opens the target page in the browser; references and rename are limited to the current document.
+Powered by `wikiparser-node`: diagnostics and quick fixes, syntax/semantic highlighting, completion, hover, signature help, folding, outline, internal links, definitions/references/rename.
 
 Beyond wikiparser's context completion, completion also offers structural snippets: headings, tables, quotes, tags, redirects, signatures, comments and more. Accepting a parser-function completion (`#if`, `#switch`, `#invoke`, …) generates a skeleton with parameter placeholders. `{{{`, `{{`, `[[`, `{|`, `<!--` and `-{` auto-close; no snippets are offered inside `<nowiki>`, `<pre>`, comments and similar regions.
 
@@ -142,4 +145,4 @@ Most cases do jump, but complex layouts can still break forward or reverse match
 
 Runtime messages have English as their source and switch automatically with VS Code's display language through `vscode.l10n`; Simplified Chinese is bundled today (`l10n/bundle.l10n.zh-cn.json`). Manifest text such as command titles and settings uses `package.nls*.json`.
 
-To add a language, copy `l10n/bundle.l10n.zh-cn.json` to the matching locale file (e.g. `bundle.l10n.ja.json`) and translate the values; keys must match the English source strings exactly. To change the VS Code display language, run "Configure Display Language" from the command palette.
+To add a language, copy `l10n/bundle.l10n.zh-cn.json` to the matching locale file (e.g. `bundle.l10n.ja.json`) and translate the values; keys must match the English source strings exactly.
