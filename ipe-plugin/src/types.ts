@@ -21,6 +21,7 @@ export interface SessionInfo {
   sessionId: string
   title: string
   text: string
+  previewText?: string
   dirty?: boolean
   revid?: number
   basetimestamp?: string
@@ -36,6 +37,8 @@ export interface Session {
   changed: boolean
   busy: boolean
   conflict?: boolean
+  /** Render text with locally edited templates; undefined means `text`. */
+  previewText?: string
   watchlist?: WatchlistAction
   fullOriginal?: Node[]
 }
@@ -126,6 +129,13 @@ export interface UpdateMessage {
   type: 'update'
   sessionId: string
   text: string
+  previewText?: string
+}
+
+export interface RefreshPreviewMessage {
+  type: 'refresh-preview'
+  sessionId: string
+  previewText?: string
 }
 
 export interface DirtyStateMessage {
@@ -204,6 +214,7 @@ export type IncomingMessage =
   | SessionResultMessage
   | NavigateEditMessage
   | UpdateMessage
+  | RefreshPreviewMessage
   | DirtyStateMessage
   | ScrollMessage
   | SaveMessage

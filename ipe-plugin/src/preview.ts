@@ -65,7 +65,7 @@ export function createPreview({translate, request, getSession, setStatus}: Previ
         action: 'parse',
         contentmodel: 'wikitext',
         title: session.title,
-        text: session.text,
+        text: session.previewText ?? session.text,
         pst: '1',
         preview: '1',
         disableeditsection: '1',

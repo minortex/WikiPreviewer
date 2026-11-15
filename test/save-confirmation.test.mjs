@@ -81,6 +81,7 @@ function fixture() {
     updateStatus() {},
     clearDirty() {},
     getLanguageFeatures: () => undefined,
+    previewTextFor: () => undefined,
   });
   const ws = {
     origin: 'https://example.org',

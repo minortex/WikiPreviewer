@@ -36,6 +36,8 @@ export interface SessionControllerDeps {
   updateStatus(): void;
   clearDirty(fsPath: string): void;
   getLanguageFeatures(): LanguageFeatures | undefined;
+  /** Text to render with locally edited templates transcluded, if any. */
+  previewTextFor(meta: SessionMeta, text: string): string | undefined;
 }
 
 export interface SaveOutcome {
@@ -112,6 +114,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     updateStatus,
     clearDirty,
     getLanguageFeatures,
+    previewTextFor,
   } = deps;
 
   const saveFailures = new Set<string>();
@@ -158,7 +161,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     await vscode.window.showTextDocument(doc, {preview: false});
     language?.check(doc, wiki, msg.title).catch(() => {});
 
-    sessionManager.add(msg.sessionId, {
+    const meta: SessionMeta = {
       fsPath,
       sockets: new Set([ws]),
       title: msg.title,
@@ -171,7 +174,20 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       state: 'attached',
       autoRestore: true,
       originalHash: createHash('sha256').update(msg.text).digest('hex'),
-    });
+    };
+    sessionManager.add(msg.sessionId, meta);
+    const previewText = previewTextFor(meta, doc.getText());
+    if (previewText !== undefined) {
+      try {
+        ws.send(
+          JSON.stringify({
+            type: 'refresh-preview',
+            sessionId: msg.sessionId,
+            previewText,
+          }),
+        );
+      } catch {}
+    }
 
     vscode.window.setStatusBarMessage(
       vscode.l10n.t(
@@ -495,6 +511,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
           sessionId,
           title: meta.title,
           text,
+          previewText: previewTextFor(meta, text),
           dirty: !!doc?.isDirty,
           state: meta.state,
           revid: meta.revid,

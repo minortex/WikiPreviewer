@@ -12,6 +12,12 @@ import {SessionStore} from './sessions/store';
 import {SessionManager, type SessionMeta} from './sessions/manager';
 import {removeOrphanTemps} from './sessions/temps';
 import {createSessionController, type SessionController} from './sessions/controller';
+import {
+  expandTemplates,
+  templateNamespaces,
+  templatePageName,
+  type TemplateOverride,
+} from './transclusion';
 import type {BrowserMessage, LocateMessage} from './protocol';
 
 let bridge: BrowserBridge | null = null;
@@ -89,13 +95,122 @@ function updateStatus(): void {
   statusBar.show();
 }
 
-function push(doc: vscode.TextDocument): boolean {
+interface LocalTemplate extends TemplateOverride {
+  origin: string;
+}
+
+const namespaceCache = new Map<string, {mtimeMs: number; namespaces: Set<string>}>();
+/** Last broadcast set of locally modified templates, used to skip no-op updates. */
+let templateSnapshot = '';
+/** Last preview text sent per session, so unrelated tabs are not re-parsed. */
+const lastPreviewText = new Map<string, string | undefined>();
+
+function templateNamespacesFor(meta: SessionMeta): ReadonlySet<string> {
+  const file = meta.wiki.configPath;
+  if (!file) return templateNamespaces(undefined);
+  try {
+    const stat = fs.statSync(file);
+    const cached = namespaceCache.get(file);
+    if (cached?.mtimeMs === stat.mtimeMs) return cached.namespaces;
+    const data = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+      nsid?: Record<string, number>;
+    };
+    const namespaces = templateNamespaces(data.nsid);
+    namespaceCache.set(file, {mtimeMs: stat.mtimeMs, namespaces});
+    return namespaces;
+  } catch {
+    return templateNamespaces(undefined);
+  }
+}
+
+function readSessionText(meta: SessionMeta): string | undefined {
+  try {
+    return fs.readFileSync(meta.fsPath, 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Templates whose local file differs from the revision the session started
+ * from. The saved file is used, so an unsaved edit never reaches a preview.
+ */
+function templateOverrides(): LocalTemplate[] {
+  const overrides: LocalTemplate[] = [];
+  for (const [sessionId, meta] of sessionManager?.entries() ?? []) {
+    const page = templatePageName(meta.title, templateNamespacesFor(meta));
+    if (!page) continue;
+    const text = readSessionText(meta);
+    if (text === undefined) continue;
+    if (!sessionController?.edited(sessionId, text)) continue;
+    overrides.push({origin: meta.wiki.origin, page, text});
+  }
+  return overrides;
+}
+
+function previewTextFor(
+  meta: SessionMeta,
+  text: string,
+  overrides: readonly LocalTemplate[] = templateOverrides(),
+): string | undefined {
+  const namespaces = templateNamespacesFor(meta);
+  const own = templatePageName(meta.title, namespaces);
+  const sources = overrides.filter(
+    override => override.origin === meta.wiki.origin && override.page !== own,
+  );
+  if (!sources.length) return undefined;
+  const expanded = expandTemplates(text, sources, namespaces);
+  return expanded === text ? undefined : expanded;
+}
+
+function refreshAllPreviews(
+  overrides: readonly LocalTemplate[] = templateOverrides(),
+): void {
+  if (!bridge || !sessionManager) return;
+  // Only sessions on a wiki with a local template change need the file read
+  // and the expansion; the rest only get a reset if they had one before.
+  const origins = new Set(overrides.map(override => override.origin));
+  for (const [sessionId, meta] of sessionManager.entries()) {
+    if (!meta.sockets.size) continue;
+    let previewText: string | undefined;
+    if (origins.has(meta.wiki.origin)) {
+      const text = readSessionText(meta);
+      if (text === undefined) continue;
+      previewText = previewTextFor(meta, text, overrides);
+    }
+    if (lastPreviewText.get(sessionId) === previewText) continue;
+    lastPreviewText.set(sessionId, previewText);
+    bridge.broadcast({type: 'refresh-preview', sessionId, previewText});
+  }
+}
+
+/** Push new preview text to every open session once the override set changes. */
+function maybeRefreshTemplates(
+  overrides: readonly LocalTemplate[] = templateOverrides(),
+): void {
+  const snapshot = overrides
+    .map(override => `${override.origin}\u0000${override.page}\u0000${override.text}`)
+    .join('\u0001');
+  if (snapshot === templateSnapshot) return;
+  templateSnapshot = snapshot;
+  refreshAllPreviews(overrides);
+}
+
+function push(
+  doc: vscode.TextDocument,
+  overrides: readonly LocalTemplate[] = templateOverrides(),
+): boolean {
   const sessionId = sessionManager?.idForPath(doc.uri.fsPath);
+  const meta = sessionManager?.forPath(doc.uri.fsPath);
   if (!sessionId || !bridge) return false;
+  const text = doc.getText();
+  const previewText = meta ? previewTextFor(meta, text, overrides) : undefined;
+  lastPreviewText.set(sessionId, previewText);
   const count = bridge.broadcast({
     type: 'update',
     sessionId,
-    text: doc.getText(),
+    text,
+    previewText,
   });
   if (count > 0) {
     vscode.window.setStatusBarMessage(
@@ -156,6 +271,7 @@ async function discardDraft(
   try {
     await fs.promises.unlink(fsPath);
   } catch {}
+  maybeRefreshTemplates();
   updateStatus();
   vscode.window.setStatusBarMessage(message, 5000);
 }
@@ -254,6 +370,7 @@ async function closeAndDelete(fsPath: string): Promise<void> {
   try {
     await fs.promises.unlink(fsPath);
   } catch {}
+  maybeRefreshTemplates();
 }
 
 let suppressScrollUntil = 0;
@@ -409,6 +526,7 @@ function activate(context: vscode.ExtensionContext): void {
     updateStatus,
     clearDirty,
     getLanguageFeatures: () => languageFeatures ?? undefined,
+    previewTextFor,
   });
   languageFeatures = registerLanguageFeatures(context, {
     navigateEdit: request => sessionController!.navigate(request),
@@ -656,10 +774,16 @@ function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.workspace.onDidSaveTextDocument(doc => {
       if (!sessionManager?.idForPath(doc.uri.fsPath)) return;
-      push(doc);
+      const overrides = templateOverrides();
+      push(doc, overrides);
       notifyDirty(doc);
+      maybeRefreshTemplates(overrides);
     }),
-    vscode.workspace.onDidOpenTextDocument(() => syncRestoredSessions()),
+    vscode.workspace.onDidOpenTextDocument(doc => {
+      if (!sessionManager?.idForPath(doc.uri.fsPath)) return;
+      syncRestoredSessions();
+      maybeRefreshTemplates();
+    }),
     vscode.window.onDidChangeActiveTextEditor(() => updateSessionContext()),
     vscode.window.tabGroups.onDidChangeTabs(event => {
       for (const tab of event.closed) {
@@ -768,7 +892,11 @@ function activate(context: vscode.ExtensionContext): void {
           // A clean document whose content just changed was reloaded from disk
           // (external editor) or equals disk after an undo/auto-save: treat it
           // like a save and push, since the browser has no other way to see it.
-          if (!event.document.isDirty) push(event.document);
+          if (!event.document.isDirty) {
+            const overrides = templateOverrides();
+            push(event.document, overrides);
+            maybeRefreshTemplates(overrides);
+          }
         }, 120),
       );
     }),

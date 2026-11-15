@@ -157,6 +157,7 @@ function bootExtension(tempRoot, origin) {
     updateStatus() {},
     clearDirty() {},
     getLanguageFeatures: () => undefined,
+    previewTextFor: () => undefined,
   });
 
   function dispatch(msg, ws) {

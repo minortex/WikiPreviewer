@@ -406,8 +406,12 @@ export default {
           return
         }
         if (!session || msg.sessionId !== session.id) return
-        if (msg.type === 'update') {
+        if (msg.type === 'refresh-preview') {
+          session.previewText = msg.previewText
+          preview.schedulePreview()
+        } else if (msg.type === 'update') {
           session.text = msg.text
+          session.previewText = msg.previewText
           session.changed = true
           preview.schedulePreview()
         } else if (msg.type === 'state') {
@@ -533,6 +537,7 @@ export default {
         text: info.text,
         wikiPage,
         remoteDirty: !!info.dirty,
+        previewText: info.previewText,
       })
       ensureBar()
       document.body.classList.remove('ipe-modal-no-scroll')

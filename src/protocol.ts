@@ -12,6 +12,7 @@ export interface SessionSnapshot {
   sessionId: string;
   title: string;
   text: string;
+  previewText?: string;
   dirty: boolean;
   state: SessionState;
   revid?: number;
@@ -158,6 +159,18 @@ export interface UpdateMessage {
   type: 'update';
   sessionId: string;
   text: string;
+  /**
+   * Text to render, with locally edited templates transcluded. Absent when no
+   * open template differs from the wiki revision, in which case `text` is used.
+   */
+  previewText?: string;
+}
+
+export interface RefreshPreviewMessage {
+  type: 'refresh-preview';
+  sessionId: string;
+  /** Undefined restores the plain preview of the saved text. */
+  previewText?: string;
 }
 
 export interface DirtyStateMessage {
@@ -246,6 +259,7 @@ export type ExtensionMessage =
   | NavigateEditMessage
   | SessionStateMessage
   | UpdateMessage
+  | RefreshPreviewMessage
   | DirtyStateMessage
   | ScrollMessage
   | SaveMessage
