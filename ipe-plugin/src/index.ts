@@ -9,6 +9,7 @@ import {
   highlightSection,
   highlightTemplate,
   isArticleLink,
+  isArticleView,
   scrollToOccurrence,
   textAtPoint,
 } from './locate'
@@ -333,6 +334,7 @@ export default {
         void (async () => {
           try {
             await ensureWikiRegistered()
+            if (!isArticleView()) return
             const existing = await queryExistingSession()
             if (existing.session) {
               await adoptSession(existing.session)
@@ -539,7 +541,7 @@ export default {
     }
 
     async function beginPageEdit(auto = false): Promise<void> {
-      if (session) return
+      if (session || !isArticleView()) return
       if (!connected) {
         if (auto) {
           pendingAutoEdit = true
@@ -901,15 +903,17 @@ export default {
     pendingConfirm = readPendingConfirm()
     connect()
 
-    ctx.toolbox?.addButton({
-      id: editButtonId,
-      group: 'group1',
-      icon: createEditIcon(),
-      tooltip: translate('Edit the whole page in VSCode'),
-      onClick: () => {
-        void beginPageEdit()
-      },
-    })
+    if (isArticleView()) {
+      ctx.toolbox?.addButton({
+        id: editButtonId,
+        group: 'group1',
+        icon: createEditIcon(),
+        tooltip: translate('Edit the whole page in VSCode'),
+        onClick: () => {
+          void beginPageEdit()
+        },
+      })
+    }
 
     document.addEventListener('click', onClick, true)
     window.addEventListener('resize', syncBarHeight)
