@@ -6,7 +6,7 @@ import {defaultConfigPath} from '../wiki/config';
 import type {WikiRecord} from '../wiki/registry';
 
 export function setting<T>(key: string, fallback: T): T {
-  const value = vscode.workspace.getConfiguration('mediawikiEditor').get<T>(key);
+  const value = vscode.workspace.getConfiguration('wiki-previewer').get<T>(key);
   return value === undefined ? fallback : value;
 }
 
@@ -39,7 +39,7 @@ export function createConfigLoader(extensionPath: string): ConfigLoader {
       if (file !== fallback) {
         vscode.window.showWarningMessage(
           vscode.l10n.t(
-            'MediaWiki: Unable to read parser config {0}; using the built-in default: {1}',
+            'WikiPreviewer: Unable to read parser config {0}; using the built-in default: {1}',
             file,
             error instanceof Error ? error.message : String(error),
           ),

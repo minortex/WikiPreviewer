@@ -28,8 +28,8 @@ export const messages: Record<string, string> = {
   'Images used': '使用的图片',
   'Cancel': '取消',
   'The site did not return siteinfo': '站点没有返回 siteinfo',
-  'VSCode extension is not connected. Open VSCode and make sure the MediaWiki extension is installed and enabled.':
-    'VSCode 扩展未连接。请手动打开 VSCode，并确认已安装并启用 MediaWiki 扩展。',
+  'VSCode extension is not connected. Open VSCode and make sure the WikiPreviewer extension is installed and enabled.':
+    'VSCode 扩展未连接。请手动打开 VSCode，并确认已安装并启用 WikiPreviewer 扩展。',
   'VSCode not connected': 'VSCode 未连接',
   'Open target page': '打开目标页面',
   'Popup blocked': '弹窗被拦截',

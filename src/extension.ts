@@ -41,7 +41,7 @@ function consumeSilentClose(fsPath: string): boolean {
 
 
 function config(): vscode.WorkspaceConfiguration {
-  return vscode.workspace.getConfiguration('mediawikiEditor');
+  return vscode.workspace.getConfiguration('wiki-previewer');
 }
 
 function safeName(title: string): string {
@@ -51,13 +51,13 @@ function safeName(title: string): string {
 function defaultDir(): string {
   if (process.platform === 'win32') {
     const base = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
-    return path.join(base, 'mediawiki-edit');
+    return path.join(base, 'wiki-previewer-edit');
   }
   if (process.platform === 'darwin') {
-    return path.join(os.homedir(), 'Library', 'Caches', 'mediawiki-edit');
+    return path.join(os.homedir(), 'Library', 'Caches', 'wiki-previewer-edit');
   }
   const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-  return path.join(base, 'mediawiki-edit');
+  return path.join(base, 'wiki-previewer-edit');
 }
 
 function stamp(date = new Date()): string {
@@ -73,7 +73,7 @@ function updateSessionContext(): void {
   const active = !!(fsPath && sessionManager?.idForPath(fsPath));
   void vscode.commands.executeCommand(
     'setContext',
-    'mediawikiEditor.sessionActive',
+    'wiki-previewer.sessionActive',
     active,
   );
 }
@@ -83,8 +83,8 @@ function updateStatus(): void {
   if (!statusBar) return;
   const connected = bridge?.connectionCount || 0;
   statusBar.text = connected
-    ? '$(vm-active) ' + vscode.l10n.t('MediaWiki: Connected')
-    : '$(vm-outline) ' + vscode.l10n.t('MediaWiki: Waiting for the browser');
+    ? '$(vm-active) ' + vscode.l10n.t('WikiPreviewer: Connected')
+    : '$(vm-outline) ' + vscode.l10n.t('WikiPreviewer: Waiting for the browser');
   statusBar.tooltip = vscode.l10n.t('Click to view the connection status');
   statusBar.show();
 }
@@ -99,7 +99,7 @@ function push(doc: vscode.TextDocument): boolean {
   });
   if (count > 0) {
     vscode.window.setStatusBarMessage(
-      vscode.l10n.t('MediaWiki: Pushed the saved content to the browser preview'),
+      vscode.l10n.t('WikiPreviewer: Pushed the saved content to the browser preview'),
       5000,
     );
   }
@@ -149,7 +149,7 @@ async function closeEditor(fsPath: string): Promise<void> {
 async function discardDraft(
   fsPath: string,
   sessionId: string,
-  message = vscode.l10n.t('MediaWiki: Changes discarded; the temp file was deleted'),
+  message = vscode.l10n.t('WikiPreviewer: Changes discarded; the temp file was deleted'),
 ): Promise<void> {
   clearDirty(fsPath);
   sessionManager?.remove(sessionId);
@@ -201,7 +201,7 @@ function handleEditorClosed(fsPath: string): void {
     void discardDraft(
       fsPath,
       sessionId,
-      vscode.l10n.t('MediaWiki: No changes; the temp file was deleted'),
+      vscode.l10n.t('WikiPreviewer: No changes; the temp file was deleted'),
     );
     return;
   }
@@ -210,13 +210,13 @@ function handleEditorClosed(fsPath: string): void {
   void vscode.window
     .showWarningMessage(
       vscode.l10n.t(
-        'MediaWiki: The editor for {0} was closed with uncommitted changes.',
+        'WikiPreviewer: The editor for {0} was closed with uncommitted changes.',
         meta.title,
       ),
       {
         modal: true,
         detail: vscode.l10n.t(
-          'Save as draft: keep the temp file; run "MediaWiki: Restore editing draft" later.\nDiscard changes: delete the temp file; uncommitted changes cannot be recovered.\n{0}',
+          'Save as draft: keep the temp file; run "WikiPreviewer: Restore editing draft" later.\nDiscard changes: delete the temp file; uncommitted changes cannot be recovered.\n{0}',
           fsPath,
         ),
       },
@@ -267,7 +267,7 @@ function revealLine(editor: vscode.TextEditor, line: number): void {
     vscode.TextEditorRevealType.InCenter,
   );
   vscode.window.setStatusBarMessage(
-    vscode.l10n.t('MediaWiki: Jumped to line {0}', String(line + 1)),
+    vscode.l10n.t('WikiPreviewer: Jumped to line {0}', String(line + 1)),
     2000,
   );
 }
@@ -306,7 +306,7 @@ function handleMessage(
     if ('section' in msg && msg.section != null) {
       vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: The web plugin still requests section editing. This version only supports whole-page editing; update the web plugin and try again.',
+          'WikiPreviewer: The web plugin still requests section editing. This version only supports whole-page editing; update the web plugin and try again.',
         ),
       );
       return;
@@ -315,7 +315,7 @@ function handleMessage(
     if (!wiki) {
       vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: Unregistered wiki ({0}). Make sure the web plugin is up to date and reload the page.',
+          'WikiPreviewer: Unregistered wiki ({0}). Make sure the web plugin is up to date and reload the page.',
           msg.wiki || ws.origin || vscode.l10n.t('unknown origin'),
         ),
       );
@@ -324,7 +324,7 @@ function handleMessage(
     controller.open(msg, ws, wiki).catch((error: unknown) =>
       vscode.window.showErrorMessage(
         vscode.l10n.t(
-          'MediaWiki: {0}',
+          'WikiPreviewer: {0}',
           error instanceof Error ? error.message : String(error),
         ),
       ),
@@ -339,7 +339,7 @@ function handleMessage(
     controller.handleConflict(msg).catch((error: unknown) =>
       vscode.window.showErrorMessage(
         vscode.l10n.t(
-          'MediaWiki: Failed to load the conflict: {0}',
+          'WikiPreviewer: Failed to load the conflict: {0}',
           error instanceof Error ? error.message : String(error),
         ),
       ),
@@ -352,7 +352,7 @@ function handleMessage(
     controller.requestSave(msg, ws).catch((error: unknown) =>
       vscode.window.showErrorMessage(
         vscode.l10n.t(
-          'MediaWiki: {0}',
+          'WikiPreviewer: {0}',
           error instanceof Error ? error.message : String(error),
         ),
       ),
@@ -362,7 +362,7 @@ function handleMessage(
 
 function activate(context: vscode.ExtensionContext): void {
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  statusBar.command = 'mediawikiEditor.status';
+  statusBar.command = 'wiki-previewer.status';
   updateStatus();
 
   const port = config().get<number>('port', 8927);
@@ -384,7 +384,7 @@ function activate(context: vscode.ExtensionContext): void {
         : '';
     vscode.window.showWarningMessage(
       vscode.l10n.t(
-        'MediaWiki: Stopped tracking old section-editing drafts (this version only supports whole-page editing). The temp files are kept:\n{0}{1}',
+        'WikiPreviewer: Stopped tracking old section-editing drafts (this version only supports whole-page editing). The temp files are kept:\n{0}{1}',
         shown,
         more,
       ),
@@ -430,7 +430,7 @@ function activate(context: vscode.ExtensionContext): void {
     onError: error => {
       vscode.window.showErrorMessage(
         vscode.l10n.t(
-          'MediaWiki: Failed to start the local server (port {0}): {1}',
+          'WikiPreviewer: Failed to start the local server (port {0}): {1}',
           String(port),
           error.message,
         ),
@@ -441,34 +441,34 @@ function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     statusBar,
     ...wikis.register(context, () => languageFeatures?.refresh()),
-    vscode.commands.registerCommand('mediawikiEditor.push', () => {
+    vscode.commands.registerCommand('wiki-previewer.push', () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: No file is open.'),
+          vscode.l10n.t('WikiPreviewer: No file is open.'),
         );
         return;
       }
       if (!push(editor.document)) {
         vscode.window.showInformationMessage(
           vscode.l10n.t(
-            'MediaWiki: The current file is not an editing session, or the browser is not connected.',
+            'WikiPreviewer: The current file is not an editing session, or the browser is not connected.',
           ),
         );
       }
     }),
-    vscode.commands.registerCommand('mediawikiEditor.save', async () => {
+    vscode.commands.registerCommand('wiki-previewer.save', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: No file is open.'),
+          vscode.l10n.t('WikiPreviewer: No file is open.'),
         );
         return;
       }
       const sessionId = sessionManager?.idForPath(editor.document.uri.fsPath);
       if (!sessionId) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: The current file is not an editing session.'),
+          vscode.l10n.t('WikiPreviewer: The current file is not an editing session.'),
         );
         return;
       }
@@ -487,20 +487,20 @@ function activate(context: vscode.ExtensionContext): void {
         await sessionController!.finish({type: 'finish', sessionId, result: 'saved'});
         vscode.window.showInformationMessage(
           vscode.l10n.t(
-            'MediaWiki: Submitted; waiting for the browser to show the new content before cleanup.',
+            'WikiPreviewer: Submitted; waiting for the browser to show the new content before cleanup.',
           ),
         );
       } else {
         vscode.window.showErrorMessage(
-          vscode.l10n.t('MediaWiki: Save failed: {0}', result.error ?? ''),
+          vscode.l10n.t('WikiPreviewer: Save failed: {0}', result.error ?? ''),
         );
       }
     }),
-    vscode.commands.registerCommand('mediawikiEditor.closeSession', async () => {
+    vscode.commands.registerCommand('wiki-previewer.closeSession', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: No file is open.'),
+          vscode.l10n.t('WikiPreviewer: No file is open.'),
         );
         return;
       }
@@ -508,7 +508,7 @@ function activate(context: vscode.ExtensionContext): void {
       const meta = sessionId ? sessionManager?.get(sessionId) : undefined;
       if (!sessionId || !meta) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: The current file is not an editing session.'),
+          vscode.l10n.t('WikiPreviewer: The current file is not an editing session.'),
         );
         return;
       }
@@ -519,7 +519,7 @@ function activate(context: vscode.ExtensionContext): void {
         await closeEditor(meta.fsPath);
         vscode.window.showInformationMessage(
           vscode.l10n.t(
-            'MediaWiki: Submitted; waiting for the browser to confirm before closing the page and cleaning up.',
+            'WikiPreviewer: Submitted; waiting for the browser to confirm before closing the page and cleaning up.',
           ),
         );
         return;
@@ -537,7 +537,7 @@ function activate(context: vscode.ExtensionContext): void {
       const discardLabel = vscode.l10n.t('Discard changes');
       const choice = await vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: {0} has uncommitted changes. Save before closing?',
+          'WikiPreviewer: {0} has uncommitted changes. Save before closing?',
           meta.title,
         ),
         {modal: true},
@@ -563,7 +563,7 @@ function activate(context: vscode.ExtensionContext): void {
         await closeEditor(meta.fsPath);
         vscode.window.showWarningMessage(
           vscode.l10n.t(
-            'MediaWiki: The browser is not connected; the file was kept as a draft.',
+            'WikiPreviewer: The browser is not connected; the file was kept as a draft.',
           ),
         );
         return;
@@ -577,7 +577,7 @@ function activate(context: vscode.ExtensionContext): void {
       );
       if (!result.ok) {
         vscode.window.showErrorMessage(
-          vscode.l10n.t('MediaWiki: Save failed: {0}', result.error ?? ''),
+          vscode.l10n.t('WikiPreviewer: Save failed: {0}', result.error ?? ''),
         );
         return;
       }
@@ -586,18 +586,18 @@ function activate(context: vscode.ExtensionContext): void {
       await closeEditor(meta.fsPath);
       vscode.window.showInformationMessage(
         vscode.l10n.t(
-          'MediaWiki: Submitted; waiting for the browser to confirm before closing the page and cleaning up.',
+          'WikiPreviewer: Submitted; waiting for the browser to confirm before closing the page and cleaning up.',
         ),
       );
     }),
-    vscode.commands.registerCommand('mediawikiEditor.restoreDraft', () =>
+    vscode.commands.registerCommand('wiki-previewer.restoreDraft', () =>
       sessionController!.restoreDraft(),
     ),
-    vscode.commands.registerCommand('mediawikiEditor.openPage', async () => {
+    vscode.commands.registerCommand('wiki-previewer.openPage', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: No file is open.'),
+          vscode.l10n.t('WikiPreviewer: No file is open.'),
         );
         return;
       }
@@ -605,28 +605,28 @@ function activate(context: vscode.ExtensionContext): void {
       const meta = sessionId ? sessionManager?.get(sessionId) : undefined;
       if (!meta) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: The current file is not an editing session.'),
+          vscode.l10n.t('WikiPreviewer: The current file is not an editing session.'),
         );
         return;
       }
       const url = sessionController!.pageUrl(meta.wiki, meta.title);
       if (!url) {
         vscode.window.showErrorMessage(
-          vscode.l10n.t('MediaWiki: Unable to build the page URL.'),
+          vscode.l10n.t('WikiPreviewer: Unable to build the page URL.'),
         );
         return;
       }
       await vscode.env.openExternal(vscode.Uri.parse(url));
       vscode.window.setStatusBarMessage(
-        vscode.l10n.t('MediaWiki: Opened {0} in the browser', meta.title),
+        vscode.l10n.t('WikiPreviewer: Opened {0} in the browser', meta.title),
         5000,
       );
     }),
-    vscode.commands.registerCommand('mediawikiEditor.check', async () => {
+    vscode.commands.registerCommand('wiki-previewer.check', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         vscode.window.showInformationMessage(
-          vscode.l10n.t('MediaWiki: No file is open.'),
+          vscode.l10n.t('WikiPreviewer: No file is open.'),
         );
         return;
       }
@@ -637,17 +637,17 @@ function activate(context: vscode.ExtensionContext): void {
       } catch (error) {
         vscode.window.showErrorMessage(
           vscode.l10n.t(
-            'MediaWiki: Language check failed: {0}',
+            'WikiPreviewer: Language check failed: {0}',
             error instanceof Error ? error.message : String(error),
           ),
         );
       }
     }),
-    vscode.commands.registerCommand('mediawikiEditor.status', () => {
+    vscode.commands.registerCommand('wiki-previewer.status', () => {
       const connected = bridge?.connectionCount || 0;
       vscode.window.showInformationMessage(
         vscode.l10n.t(
-          'MediaWiki: Port {0}, {1} browser connection(s), {2} active editing session(s).',
+          'WikiPreviewer: Port {0}, {1} browser connection(s), {2} active editing session(s).',
           String(config().get('port')),
           String(connected),
           String(sessionManager?.values().length || 0),

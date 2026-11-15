@@ -1,16 +1,22 @@
-# MediaWiki VSCode External Editor
+# WikiPreviewer
 
 English | [简体中文](README.md)
 
+<img src="assets/icon.png" width="128" height="128" alt="WikiPreviewer">
+
 An InPageEdit + VSCode Plugin combo that uses VSCode as the editor and the browser as the renderer.
+
+- One click in InPageEdit hands whole-page editing to VSCode; the article body turns into a live preview.
+- The extension owns unsaved changes, so closing a tab, dropping the connection, or a crash can still restore the session or draft.
+- Edit conflicts on save are written into the editor as markers for manual merging.
 
 ## Installation
 
 ### VSIX
 
-- [open-vsx.org](https://open-vsx.org/extension/minortex/mediawiki-vscode-editor)
+- [open-vsx.org](https://open-vsx.org/extension/minortex/wiki-previewer)
 
-- [vscode-marketplace](https://marketplace.visualstudio.com/items?itemName=minortex.mediawiki-vscode-editor)
+- [vscode-marketplace](https://marketplace.visualstudio.com/items?itemName=minortex.wiki-previewer)
 
 Development builds are available under actions -> artifacts.
 
@@ -19,12 +25,12 @@ Development builds are available under actions -> artifacts.
 In InPageEdit, open Settings → Plugin Store and add the registry:
 
 ```
-https://minortex.github.io/mediawiki-vscode-editor/ipe-plugin/registry.json
+https://minortex.github.io/WikiPreviewer/ipe-plugin/registry.json
 ```
 
 Development version:
 ```
-https://minortex.github.io/mediawiki-vscode-editor/ipe-plugin/dev/registry.json
+https://minortex.github.io/WikiPreviewer/ipe-plugin/dev/registry.json
 ```
 
 After installing:

@@ -207,7 +207,7 @@ export default {
       const text =
         message ||
         translate(
-          'VSCode extension is not connected. Open VSCode and make sure the MediaWiki extension is installed and enabled.',
+          'VSCode extension is not connected. Open VSCode and make sure the WikiPreviewer extension is installed and enabled.',
         )
       if (ctx.modal) {
         notifyWarning({

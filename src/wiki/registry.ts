@@ -11,7 +11,7 @@ import {
   wikiIdFromOrigin,
 } from './config';
 
-const STATE_KEY = 'mediawikiEditor.wikis';
+const STATE_KEY = 'wiki-previewer.wikis';
 
 export interface WikiRecord extends WikiIdentity {
   url: string;
@@ -169,7 +169,7 @@ async function promptRemove(
   const wikis = custom(context);
   if (!wikis.length) {
     vscode.window.showInformationMessage(
-      vscode.l10n.t('MediaWiki: No wikis are registered.'),
+      vscode.l10n.t('WikiPreviewer: No wikis are registered.'),
     );
     return;
   }
@@ -181,7 +181,7 @@ async function promptRemove(
   const removeLabel = vscode.l10n.t('Remove');
   const confirm = await vscode.window.showWarningMessage(
     vscode.l10n.t(
-      'MediaWiki: Remove {0}? Its generated parser config will be deleted too.',
+      'WikiPreviewer: Remove {0}? Its generated parser config will be deleted too.',
       picked.wiki.name,
     ),
     {modal: true},
@@ -197,7 +197,7 @@ async function promptRemove(
   }
   onChange();
   vscode.window.showInformationMessage(
-    vscode.l10n.t('MediaWiki: Removed {0}', picked.wiki.name),
+    vscode.l10n.t('WikiPreviewer: Removed {0}', picked.wiki.name),
   );
 }
 
@@ -225,10 +225,10 @@ export function register(
   onChange: () => void,
 ): vscode.Disposable[] {
   return [
-    vscode.commands.registerCommand('mediawikiEditor.removeWiki', () =>
+    vscode.commands.registerCommand('wiki-previewer.removeWiki', () =>
       promptRemove(context, onChange),
     ),
-    vscode.commands.registerCommand('mediawikiEditor.listWikis', () => showList(context)),
+    vscode.commands.registerCommand('wiki-previewer.listWikis', () => showList(context)),
   ];
 }
 

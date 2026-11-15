@@ -43,7 +43,7 @@ jobs:
         run: npm run package:vsix
       - uses: actions/upload-artifact@v4
         with:
-          name: mediawiki-vscode-editor-dev-${{ github.sha }}
+          name: wiki-previewer-dev-${{ github.sha }}
           path: dist/*.vsix
           retention-days: 14
           if-no-files-found: error

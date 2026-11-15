@@ -59,8 +59,8 @@ async function apiGet(params) {
   const url = `${api}?${new URLSearchParams({format: 'json', formatversion: '2', ...params})}`;
   const response = await fetch(url, {
     signal: AbortSignal.timeout(15000),
-    headers: cookie ? {cookie, 'user-agent': 'mediawiki-vscode-editor/ast-survey'} : {
-      'user-agent': 'mediawiki-vscode-editor/ast-survey',
+    headers: cookie ? {cookie, 'user-agent': 'wiki-previewer/ast-survey'} : {
+      'user-agent': 'wiki-previewer/ast-survey',
     },
   });
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);

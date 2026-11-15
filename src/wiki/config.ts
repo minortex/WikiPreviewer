@@ -6,7 +6,7 @@ import {l10n} from 'vscode';
 
 const localRequire = createRequire(__filename);
 const USER_AGENT =
-  'mediawiki-vscode-editor/0.2 (+https://github.com/minortex/mediawiki-vscode-editor)';
+  'wiki-previewer/0.2 (+https://github.com/minortex/WikiPreviewer)';
 
 export interface SiteInfoGeneral {
   server?: string;

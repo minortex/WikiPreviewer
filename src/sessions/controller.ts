@@ -175,7 +175,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
 
     vscode.window.setStatusBarMessage(
       vscode.l10n.t(
-        'MediaWiki: Editing {0} on {1}; save the file to refresh the browser preview',
+        'WikiPreviewer: Editing {0} on {1}; save the file to refresh the browser preview',
         msg.title,
         wiki.name,
       ),
@@ -196,7 +196,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       sendFinishTo(sockets, msg.sessionId, 'closed');
       vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: Commit failed; the temp file was kept as a draft: {0}',
+          'WikiPreviewer: Commit failed; the temp file was kept as a draft: {0}',
           meta.fsPath,
         ),
       );
@@ -208,7 +208,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       sendFinishTo(sockets, msg.sessionId, 'closed');
       vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: The editing session was disconnected; the temp file was kept: {0}',
+          'WikiPreviewer: The editing session was disconnected; the temp file was kept: {0}',
           meta.fsPath,
         ),
       );
@@ -219,7 +219,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       sessionManager.markAwaitingConfirm(msg.sessionId);
       vscode.window.setStatusBarMessage(
         vscode.l10n.t(
-          'MediaWiki: Submitted; waiting for the browser to confirm the new content before cleanup',
+          'WikiPreviewer: Submitted; waiting for the browser to confirm the new content before cleanup',
         ),
         5000,
       );
@@ -230,7 +230,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     sessionManager.remove(msg.sessionId);
     await closeAndDelete(meta.fsPath);
     sendFinishTo(sockets, msg.sessionId, msg.result);
-    vscode.window.setStatusBarMessage(vscode.l10n.t('MediaWiki: Editing session ended'), 5000);
+    vscode.window.setStatusBarMessage(vscode.l10n.t('WikiPreviewer: Editing session ended'), 5000);
   }
 
   function markSaved(sessionId: string): void {
@@ -260,7 +260,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     if (!doc) {
       vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: Edit conflict detected, but the local file is missing: {0}',
+          'WikiPreviewer: Edit conflict detected, but the local file is missing: {0}',
           meta.fsPath,
         ),
       );
@@ -274,7 +274,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     if (merged === local) {
       vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: The submission conflicted, but the local content matches the latest site content.',
+          'WikiPreviewer: The submission conflicted, but the local content matches the latest site content.',
         ),
       );
       return;
@@ -289,7 +289,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     if (!applied) {
       vscode.window.showWarningMessage(
         vscode.l10n.t(
-          'MediaWiki: The submission conflicted, but the conflict markers could not be written. The local file was kept.',
+          'WikiPreviewer: The submission conflicted, but the conflict markers could not be written. The local file was kept.',
         ),
       );
       return;
@@ -297,7 +297,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     await vscode.window.showTextDocument(doc, {preview: false});
     vscode.window.showWarningMessage(
       vscode.l10n.t(
-        'MediaWiki: Edit conflict detected; the local and latest site versions were written to the editor. Resolve the markers and submit again.',
+        'WikiPreviewer: Edit conflict detected; the local and latest site versions were written to the editor. Resolve the markers and submit again.',
       ),
     );
   }
@@ -346,7 +346,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
         sessionManager.markDraft(msg.sessionId, false, true);
         vscode.window.showWarningMessage(
           vscode.l10n.t(
-            'MediaWiki: The browser already shows the new content, but the local file still has unsubmitted changes; it was kept as a draft: {0}',
+            'WikiPreviewer: The browser already shows the new content, but the local file still has unsubmitted changes; it was kept as a draft: {0}',
             meta.fsPath,
           ),
         );
@@ -360,7 +360,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       await closeAndDelete(meta.fsPath);
       vscode.window.setStatusBarMessage(
         vscode.l10n.t(
-          'MediaWiki: Confirmed revision {0}; the temp file was cleaned up',
+          'WikiPreviewer: Confirmed revision {0}; the temp file was cleaned up',
           String(revid),
         ),
         5000,
@@ -370,7 +370,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     } catch (error) {
       reply({ok: false, error: errorMessage(error)});
       vscode.window.showWarningMessage(
-        vscode.l10n.t('MediaWiki: Failed to clean up the temp file: {0}', errorMessage(error)),
+        vscode.l10n.t('WikiPreviewer: Failed to clean up the temp file: {0}', errorMessage(error)),
       );
     }
   }
@@ -516,7 +516,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     const ws = meta && liveSocket(meta);
     if (!ws || !getBridge()) {
       vscode.window.showWarningMessage(
-        vscode.l10n.t('MediaWiki: The browser is not connected; cannot open the target page.'),
+        vscode.l10n.t('WikiPreviewer: The browser is not connected; cannot open the target page.'),
       );
       return false;
     }
@@ -529,14 +529,14 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       if (!reply.opened) {
         vscode.window.showWarningMessage(
           vscode.l10n.t(
-            'MediaWiki: The browser blocked the target page. Allow popups for this site and try again.',
+            'WikiPreviewer: The browser blocked the target page. Allow popups for this site and try again.',
           ),
         );
       }
       return !!reply.opened;
     } catch (error) {
       vscode.window.showWarningMessage(
-        vscode.l10n.t('MediaWiki: Failed to open the target page: {0}', errorMessage(error)),
+        vscode.l10n.t('WikiPreviewer: Failed to open the target page: {0}', errorMessage(error)),
       );
       return false;
     }
@@ -552,7 +552,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     const ws = meta && liveSocket(meta);
     if (!meta || !ws || !getBridge()) {
       vscode.window.showWarningMessage(
-        vscode.l10n.t('MediaWiki: The browser is not connected; cannot submit.'),
+        vscode.l10n.t('WikiPreviewer: The browser is not connected; cannot submit.'),
       );
       return {ok: false, error: vscode.l10n.t('Browser is not connected')};
     }
@@ -569,7 +569,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
       return {ok: !!reply.ok, error: reply.error};
     } catch (error) {
       vscode.window.showWarningMessage(
-        vscode.l10n.t('MediaWiki: Submission failed: {0}', errorMessage(error)),
+        vscode.l10n.t('WikiPreviewer: Submission failed: {0}', errorMessage(error)),
       );
       return {ok: false, error: errorMessage(error)};
     }
@@ -596,7 +596,7 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     const drafts = sessionManager.drafts();
     if (!drafts.length) {
       vscode.window.showInformationMessage(
-        vscode.l10n.t('MediaWiki: There are no drafts to restore.'),
+        vscode.l10n.t('WikiPreviewer: There are no drafts to restore.'),
       );
       return;
     }
@@ -614,12 +614,12 @@ export function createSessionController(deps: SessionControllerDeps): SessionCon
     const doc = await ensureSessionEditor(picked.meta);
     if (!doc) {
       vscode.window.showErrorMessage(
-        vscode.l10n.t('MediaWiki: The draft file does not exist; cannot restore.'),
+        vscode.l10n.t('WikiPreviewer: The draft file does not exist; cannot restore.'),
       );
       return;
     }
     vscode.window.showInformationMessage(
-      vscode.l10n.t('MediaWiki: Restored the draft for {0}.', picked.meta.title),
+      vscode.l10n.t('WikiPreviewer: Restored the draft for {0}.', picked.meta.title),
     );
   }
 

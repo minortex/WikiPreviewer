@@ -1,5 +1,5 @@
 {
-  "name": "mediawiki-vscode-ipe",
+  "name": "wiki-previewer-ipe",
   "private": true,
   "type": "module",
   "module": "./dist/index.mjs",

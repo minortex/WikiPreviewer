@@ -35,7 +35,7 @@ type ParserCompletionItem = NonNullable<
   Awaited<ReturnType<ParserLanguageService['provideCompletionItems']>>
 >[number];
 
-const LANGUAGE_ID = 'mediawiki-wikitext';
+const LANGUAGE_ID = 'wiki-previewer-wikitext';
 const SELECTOR: vscode.DocumentSelector = [
   {language: LANGUAGE_ID, scheme: 'file'},
   {language: LANGUAGE_ID, scheme: 'untitled'},
@@ -117,7 +117,7 @@ export function registerLanguageFeatures(
     vscode.CodeAction,
     {action: LspCodeAction; service: ParserLanguageService; document: vscode.TextDocument}
   >();
-  const diagnostics = vscode.languages.createDiagnosticCollection('mediawiki');
+  const diagnostics = vscode.languages.createDiagnosticCollection('wiki-previewer');
 
   function serviceFor(document: vscode.TextDocument): ParserLanguageService | undefined {
     if (!enabled()) return undefined;
@@ -786,7 +786,7 @@ export function registerLanguageFeatures(
         'diagnosticsMaxLength',
         'parserConfig',
       ];
-      if (!keys.some(key => event.affectsConfiguration(`mediawikiEditor.${key}`))) return;
+      if (!keys.some(key => event.affectsConfiguration(`wiki-previewer.${key}`))) return;
       resetServices();
       for (const document of vscode.workspace.textDocuments) {
         if (document.languageId === LANGUAGE_ID) schedule(document, 0);

@@ -17,8 +17,8 @@ const version = ipeVersion()
 const entry = `${modulePath}?v=${encodeURIComponent(version)}`
 
 const registry = JSON.parse(fs.readFileSync(templatePath, 'utf8'))
-const plugin = registry.packages.find(item => item.id === 'mediawiki-vscode-ipe')
-if (!plugin) throw new Error('mediawiki-vscode-ipe missing from registry.template.json')
+const plugin = registry.packages.find(item => item.id === 'wiki-previewer-ipe')
+if (!plugin) throw new Error('wiki-previewer-ipe missing from registry.template.json')
 plugin.version = version
 plugin.license = 'GPL-3.0-or-later'
 plugin.loader = {

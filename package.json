@@ -1,10 +1,11 @@
 {
-  "name": "mediawiki-vscode-editor",
+  "name": "wiki-previewer",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.23.0",
+  "version": "1.0.0",
   "publisher": "minortex",
   "license": "GPL-3.0-or-later",
+  "icon": "assets/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -15,89 +16,89 @@
   "l10n": "./l10n",
   "activationEvents": [
     "onStartupFinished",
-    "onLanguage:mediawiki-wikitext"
+    "onLanguage:wiki-previewer-wikitext"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "mediawikiEditor.push",
+        "command": "wiki-previewer.push",
         "title": "%command.push.title%"
       },
       {
-        "command": "mediawikiEditor.status",
+        "command": "wiki-previewer.status",
         "title": "%command.status.title%"
       },
       {
-        "command": "mediawikiEditor.save",
+        "command": "wiki-previewer.save",
         "title": "%command.save.title%",
         "icon": "$(cloud-upload)"
       },
       {
-        "command": "mediawikiEditor.check",
+        "command": "wiki-previewer.check",
         "title": "%command.check.title%"
       },
       {
-        "command": "mediawikiEditor.removeWiki",
+        "command": "wiki-previewer.removeWiki",
         "title": "%command.removeWiki.title%"
       },
       {
-        "command": "mediawikiEditor.listWikis",
+        "command": "wiki-previewer.listWikis",
         "title": "%command.listWikis.title%"
       },
       {
-        "command": "mediawikiEditor.openPage",
+        "command": "wiki-previewer.openPage",
         "title": "%command.openPage.title%",
         "icon": "$(link-external)"
       },
       {
-        "command": "mediawikiEditor.closeSession",
+        "command": "wiki-previewer.closeSession",
         "title": "%command.closeSession.title%",
         "icon": "$(debug-disconnect)"
       },
       {
-        "command": "mediawikiEditor.restoreDraft",
+        "command": "wiki-previewer.restoreDraft",
         "title": "%command.restoreDraft.title%"
       }
     ],
     "configuration": {
       "title": "%config.title%",
       "properties": {
-        "mediawikiEditor.port": {
+        "wiki-previewer.port": {
           "type": "number",
           "default": 8927,
           "description": "%config.port.description%"
         },
-        "mediawikiEditor.tempDir": {
+        "wiki-previewer.tempDir": {
           "type": "string",
           "default": "",
           "description": "%config.tempDir.description%"
         },
-        "mediawikiEditor.allowedOrigin": {
+        "wiki-previewer.allowedOrigin": {
           "type": "string",
           "default": "*",
           "description": "%config.allowedOrigin.description%"
         },
-        "mediawikiEditor.languageFeatures": {
+        "wiki-previewer.languageFeatures": {
           "type": "boolean",
           "default": true,
           "description": "%config.languageFeatures.description%"
         },
-        "mediawikiEditor.diagnosticsWarnings": {
+        "wiki-previewer.diagnosticsWarnings": {
           "type": "boolean",
           "default": false,
           "description": "%config.diagnosticsWarnings.description%"
         },
-        "mediawikiEditor.diagnosticsDelay": {
+        "wiki-previewer.diagnosticsDelay": {
           "type": "number",
           "default": 400,
           "description": "%config.diagnosticsDelay.description%"
         },
-        "mediawikiEditor.diagnosticsMaxLength": {
+        "wiki-previewer.diagnosticsMaxLength": {
           "type": "number",
           "default": 100000,
           "description": "%config.diagnosticsMaxLength.description%"
         },
-        "mediawikiEditor.parserConfig": {
+        "wiki-previewer.parserConfig": {
           "type": "string",
           "default": "",
           "description": "%config.parserConfig.description%"
@@ -106,7 +107,7 @@
     },
     "languages": [
       {
-        "id": "mediawiki-wikitext",
+        "id": "wiki-previewer-wikitext",
         "aliases": [
           "MediaWiki Wikitext",
           "Wikitext"
@@ -119,7 +120,7 @@
     ],
     "grammars": [
       {
-        "language": "mediawiki-wikitext",
+        "language": "wiki-previewer-wikitext",
         "scopeName": "source.mediawiki",
         "path": "./syntaxes/mediawiki.tmLanguage.json"
       }
@@ -127,18 +128,18 @@
     "menus": {
       "editor/title": [
         {
-          "command": "mediawikiEditor.save",
-          "when": "mediawikiEditor.sessionActive",
+          "command": "wiki-previewer.save",
+          "when": "wiki-previewer.sessionActive",
           "group": "navigation@1"
         },
         {
-          "command": "mediawikiEditor.openPage",
-          "when": "mediawikiEditor.sessionActive",
+          "command": "wiki-previewer.openPage",
+          "when": "wiki-previewer.sessionActive",
           "group": "navigation@2"
         },
         {
-          "command": "mediawikiEditor.closeSession",
-          "when": "mediawikiEditor.sessionActive",
+          "command": "wiki-previewer.closeSession",
+          "when": "wiki-previewer.sessionActive",
           "group": "navigation@3"
         }
       ]
@@ -170,16 +171,16 @@
     "typecheck:ipe": "tsc -p ipe-plugin/tsconfig.json --noEmit",
     "clean": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\"",
     "survey:ast": "npm run compile && node scripts/survey-ast-locate.mjs",
-    "package:vsix": "node -e \"require('node:fs').mkdirSync('dist',{recursive:true})\" && npm run compile && npx --yes @vscode/vsce package --out dist/mediawiki-vscode-editor-${npm_package_version}.vsix",
-    "publish:ovsx": "npx --yes ovsx publish dist/mediawiki-vscode-editor-${npm_package_version}.vsix --trusted-publishing --skip-duplicate",
-    "publish:marketplace": "npx --yes @vscode/vsce publish --oidc --packagePath dist/mediawiki-vscode-editor-${npm_package_version}.vsix --skip-duplicate"
+    "package:vsix": "node -e \"require('node:fs').mkdirSync('dist',{recursive:true})\" && npm run compile && npx --yes @vscode/vsce package --out dist/wiki-previewer-${npm_package_version}.vsix",
+    "publish:ovsx": "npx --yes ovsx publish dist/wiki-previewer-${npm_package_version}.vsix --trusted-publishing --skip-duplicate",
+    "publish:marketplace": "npx --yes @vscode/vsce publish --oidc --packagePath dist/wiki-previewer-${npm_package_version}.vsix --skip-duplicate"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/minortex/mediawiki-vscode-editor.git"
+    "url": "https://github.com/minortex/WikiPreviewer.git"
   },
-  "homepage": "https://github.com/minortex/mediawiki-vscode-editor",
+  "homepage": "https://github.com/minortex/WikiPreviewer",
   "bugs": {
-    "url": "https://github.com/minortex/mediawiki-vscode-editor/issues"
+    "url": "https://github.com/minortex/WikiPreviewer/issues"
   }
 }

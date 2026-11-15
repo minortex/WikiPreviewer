@@ -1,30 +1,39 @@
-# MediaWiki VSCode External Editor
+<div align="center">
+
+<img src="assets/icon.png" width="128" height="128" alt="WikiPreviewer">
+
+# WikiPreviewer
 
 [English](README.en.md) | 简体中文
 
-一个用 VSCode 作为编辑器，把浏览器当做渲染器的 InPageEdit+VSCode Plugin 组合。
+### 让你的实时编辑在浏览器上直接渲染
+
+用 VSCode 作为编辑器，把浏览器当做渲染器的 InPageEdit+VSCode Plugin 组合项目。
+
+</div>
 
 ## 安装
 
 ### VSXI
 
-- [open-vsx.org](https://open-vsx.org/extension/minortex/mediawiki-vscode-editor)
+- [open-vsx.org](https://open-vsx.org/extension/minortex/wiki-previewer)
 
-- [vscode-marketplace](https://marketplace.visualstudio.com/items?itemName=minortex.mediawiki-vscode-editor)
+- [vscode-marketplace](https://marketplace.visualstudio.com/items?itemName=minortex.wiki-previewer)
 
 开发版可在 actions -> artifacts 获取。
 
 ### IPE NEXT 插件
 
-浏览器端在 InPageEdit 设置 → 插件商店添加注册表：
+先参考[IPE 安装指南](https://www.ipe.wiki/guide/installation)安装 IPE，
+然后在 InPageEdit 设置 → 插件商店添加注册表：
 
 ```
-https://minortex.github.io/mediawiki-vscode-editor/ipe-plugin/registry.json
+https://minortex.github.io/WikiPreviewer/ipe-plugin/registry.json
 ```
 
 开发版：
 ```
-https://minortex.github.io/mediawiki-vscode-editor/ipe-plugin/dev/registry.json
+https://minortex.github.io/WikiPreviewer/ipe-plugin/dev/registry.json
 ```
 
 安装后需要：
@@ -37,9 +46,8 @@ https://minortex.github.io/mediawiki-vscode-editor/ipe-plugin/dev/registry.json
 以拓展为主，因为其真正持有用户未保存的改动，网页只负责推送站点内容和渲染，
 并附加到拓展上面可随时关闭。
 
-1. 在 IPE 工具箱里新增「在 VSCode 中编辑整页」按钮：只接管整页编辑，浏览器正文即时变成预览，底部浮条可实现原来 IPE 的功能。
-
 2. 网页端：
+   - 点击多出的第五个灰色按钮可以进行整页编辑。
    - 点“保存更改”可以进行提交。
    - 点“取消”，如果没有更改自动恢复原页面并关闭编辑器，如果有更改询问是否需要保存。
    - 同一页面的多个标签页可以同时连接到同一个编辑会话：编辑器的内容更新会推送到所有已连接的标签页，任一标签页的保存或取消都会结束同一会话。
@@ -114,7 +122,9 @@ stateDiagram-v2
 
 ## 位置同步
 
-启发式搜索，因为 Parsoid 会导致排版出错，而 DSR 不是每个 wiki 都有。
+网页随着光标同步位置，在网页中双击可以将位置同步到编辑器。
+
+启发式搜索，因为 Parsoid 会导致排版出错，而 DSR 几乎没有 wiki 支持精确定位。
 
 - 编辑器 → 预览：AST 文本项 + section + occurrence，在预览同 section 内定位。
 - 预览 → 源码：点击处文本 + section + occurrence 反查；失败时逐行文本兜底。

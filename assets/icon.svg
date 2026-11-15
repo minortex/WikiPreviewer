@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- 深色底座背景渐变 -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E2430" />
+      <stop offset="100%" stop-color="#0D1117" />
+    </linearGradient>
+
+    <!-- 中心向右扩散的实时渲染光晕 -->
+    <radialGradient id="renderGlow" cx="52%" cy="50%" r="48%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.52" />
+      <stop offset="55%" stop-color="#3366CC" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#0D1117" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- 代码背景左暗右亮透明度渐变遮罩 -->
+    <linearGradient id="codeFadeMaskGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.26" />
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.36" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.52" />
+    </linearGradient>
+    <mask id="codeFadeMask">
+      <rect x="0" y="0" width="512" height="512" fill="url(#codeFadeMaskGrad)" />
+    </mask>
+
+    <!-- 浏览器主体亮色卡片渐变 -->
+    <linearGradient id="browserSurface" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+
+    <!-- 浏览器卡片发光投影滤镜 -->
+    <filter id="cardGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#38BDF8" flood-opacity="0.50" />
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.55" />
+    </filter>
+
+    <!-- 严格对齐圆角底座内边缘的裁剪路径 -->
+    <clipPath id="roundedClip" clipPathUnits="userSpaceOnUse">
+      <rect x="17.5" y="17.5" width="477" height="477" rx="102.5" />
+    </clipPath>
+  </defs>
+
+  <!-- 1. 圆角图标底座 -->
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="url(#bgGrad)" stroke="#2D3748" stroke-width="3" />
+
+  <!-- 2. 外层负责圆角裁剪，内层负责透明度渐变遮罩（避免同节点冲突） -->
+  <g clip-path="url(#roundedClip)">
+    <g mask="url(#codeFadeMask)" font-family="&#39;JetBrains Mono&#39;, &#39;Fira Code&#39;, Consolas, monospace" font-weight="700" font-size="20">
+      <!-- Line 1: 二级标题 -->
+      <text x="28" y="58"><tspan fill="#569CD6">== </tspan><tspan fill="#9CDCFE">Wikitext Parser</tspan><tspan fill="#569CD6"> ==</tspan></text>
+      <!-- Line 2: 模板起始 -->
+      <text x="24" y="96"><tspan fill="#FFD700">{{</tspan><tspan fill="#4EC9B0">Infobox_Extension</tspan></text>
+      <!-- Line 3: 模板参数 1 -->
+      <text x="28" y="134"><tspan fill="#C586C0">| </tspan><tspan fill="#9CDCFE">render</tspan><tspan fill="#D4D4D4"> = </tspan><tspan fill="#CE9178">in-browser</tspan></text>
+      <!-- Line 4: 管道链接 -->
+      <text x="24" y="172"><tspan fill="#FFD700">[[</tspan><tspan fill="#4EC9B0">MediaWiki:Syntax</tspan><tspan fill="#C586C0">|</tspan><tspan fill="#CE9178">Live DOM</tspan><tspan fill="#FFD700">]]</tspan></text>
+      <!-- Line 5: 粗斜体与解析函数 -->
+      <text x="28" y="210"><tspan fill="#C586C0">'''</tspan><tspan fill="#DCDCAA">Bold</tspan><tspan fill="#C586C0">''' </tspan><tspan fill="#C586C0">''</tspan><tspan fill="#9CDCFE">Italic</tspan><tspan fill="#C586C0">'' </tspan><tspan fill="#FFD700">{{#if:</tspan><tspan fill="#9CDCFE">{{{1|}}}</tspan><tspan fill="#FFD700">}}</tspan></text>
+      <!-- Line 6: 模板结束与列表 -->
+      <text x="24" y="248"><tspan fill="#FFD700">}}</tspan><tspan fill="#D4D4D4"> </tspan><tspan fill="#569CD6">* </tspan><tspan fill="#9CDCFE">AST Tokenization</tspan></text>
+      <!-- Line 7: 三级标题 -->
+      <text x="28" y="286"><tspan fill="#569CD6">=== </tspan><tspan fill="#9CDCFE">Preview</tspan><tspan fill="#569CD6"> === </tspan><tspan fill="#6A9955">&lt;!-- DOM --&gt;</tspan></text>
+      <!-- Line 8: 引用标签与外部链接 -->
+      <text x="24" y="324"><tspan fill="#808080">&lt;</tspan><tspan fill="#569CD6">ref</tspan><tspan fill="#808080">&gt;</tspan><tspan fill="#CE9178">[https://mediawiki.org Wiki]</tspan><tspan fill="#808080">&lt;/</tspan><tspan fill="#569CD6">ref</tspan><tspan fill="#808080">&gt;</tspan></text>
+      <!-- Line 9: 表格语法 -->
+      <text x="28" y="362"><tspan fill="#FFD700">{| </tspan><tspan fill="#9CDCFE">class</tspan><tspan fill="#D4D4D4">=</tspan><tspan fill="#CE9178">"wikitable"</tspan><tspan fill="#C586C0"> |- </tspan><tspan fill="#569CD6">! </tspan><tspan fill="#DCDCAA">Header</tspan></text>
+      <!-- Line 10: 魔术字与分类 -->
+      <text x="24" y="400"><tspan fill="#C586C0">__TOC__ </tspan><tspan fill="#FFD700">[[</tspan><tspan fill="#4EC9B0">Category:Renderers</tspan><tspan fill="#FFD700">]]</tspan></text>
+      <!-- Line 11: 表格闭合与重定向 -->
+      <text x="28" y="438"><tspan fill="#FFD700">|}</tspan><tspan fill="#D4D4D4"> </tspan><tspan fill="#C586C0">#REDIRECT </tspan><tspan fill="#FFD700">[[</tspan><tspan fill="#4EC9B0">Main_Page</tspan><tspan fill="#FFD700">]]</tspan></text>
+      <!-- Line 12: 底部补充 -->
+      <text x="24" y="476"><tspan fill="#569CD6">: </tspan><tspan fill="#9CDCFE">Indent</tspan><tspan fill="#D4D4D4"> </tspan><tspan fill="#FFD700">{{</tspan><tspan fill="#DCDCAA">subst:CURRENTYEAR</tspan><tspan fill="#FFD700">}}</tspan></text>
+    </g>
+  </g>
+
+  <!-- 3. 中心发光光晕 -->
+  <circle cx="256" cy="256" r="220" fill="url(#renderGlow)" />
+
+  <!-- 4. 中央悬浮发光的浏览器视口卡片 -->
+  <g filter="url(#cardGlow)">
+    <!-- 浏览器窗口外框 -->
+    <rect x="130" y="128" width="252" height="256" rx="24" fill="url(#browserSurface)" stroke="#E2E8F0" stroke-width="2.5" />
+    
+    <!-- 浏览器顶部标题栏底色 -->
+    <path d="M 130 152 C 130 138.75 140.75 128 154 128 L 358 128 C 371.25 128 382 138.75 382 152 L 382 172 L 130 172 Z" fill="#E2E8F0" />
+    
+    <!-- 浏览器顶栏三色控制圆点 -->
+    <circle cx="156" cy="150" r="6" fill="#F87171" />
+    <circle cx="176" cy="150" r="6" fill="#FBBF24" />
+    <circle cx="196" cy="150" r="6" fill="#34D399" />
+
+    <!-- 地址栏/标签指示条 -->
+    <rect x="216" y="144" width="142" height="12" rx="6" fill="#CBD5E1" />
+
+    <!-- 5. 浏览器视口内部渲染内容：维基蓝衬线 W + 蓝/红双色链接 + 排版骨架 -->
+    <!-- 衬线大写 W -->
+    <path d="M 192 204 L 212 204 L 231 264 L 250 216 L 262 216 L 281 264 L 300 204 L 320 204 L 289 294 L 276 294 L 256 242 L 236 294 L 223 294 Z" fill="#3366CC" />
+    <!-- 衬线顶部小横杠装饰 -->
+    <rect x="186" y="202" width="28" height="4.5" rx="1.5" fill="#3366CC" />
+    <rect x="298" y="202" width="28" height="4.5" rx="1.5" fill="#3366CC" />
+
+    <!-- 维基蓝超链接下划线（左半段） + 维基红链点缀（右半段） -->
+    <rect x="174" y="308" width="104" height="7" rx="3.5" fill="#3366CC" />
+    <rect x="286" y="308" width="52" height="7" rx="3.5" fill="#BA0000" opacity="0.88" />
+
+    <!-- 渲染后的网页正文段落模拟条 -->
+    <rect x="174" y="329" width="164" height="8" rx="4" fill="#94A3B8" />
+    <rect x="174" y="347" width="118" height="8" rx="4" fill="#CBD5E1" />
+  </g>
+</svg>
