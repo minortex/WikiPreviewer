@@ -21,8 +21,10 @@
  *   TARGET_URL=https://example.org/wiki/Sandbox node test/e2e-sandbox.mjs
  *   BROWSER_PORT=9333 WS_PORT=8930 node test/e2e-sandbox.mjs
  *
- * Without TARGET_URL it reuses the wiki tab that is already open in the
- * browser (the first one whose MediaWiki context is ready).
+ * Without TARGET_URL it uses the sandbox page of the wiki tab that is already
+ * open in the browser (Help:沙盒 → Project:沙盒 → Wikipedia:沙盒 → English
+ * sandbox titles), opening that page in a new tab when no tab shows it yet;
+ * when the wiki has no sandbox page it fails and tells you to pass a URL.
  *
  * WARNING: it performs a real edit of the target page (appends an "E2E revid
  * check" line), so use a sandbox page you own.
@@ -361,9 +363,56 @@ async function isWikiTab(wsUrl) {
   }
 }
 
+/** Evaluate an expression in a tab through a throwaway CDP connection. */
+async function evalInTab(wsUrl, expression, timeoutMs = 10000) {
+  const cdp = await connectCdp(wsUrl);
+  try {
+    const reply = await Promise.race([
+      cdp.send('Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true}),
+      sleep(timeoutMs).then(() => {
+        throw new Error('evaluate timeout');
+      }),
+    ]);
+    if (reply.result?.exceptionDetails) {
+      throw new Error(reply.result.exceptionDetails.text || 'evaluate failed');
+    }
+    return reply.result?.result?.value;
+  } finally {
+    cdp.close();
+  }
+}
+
+/** Sandbox pages the default target tries, in order, on the open wiki. */
+const SANDBOX_TITLES = ['Help:沙盒', 'Project:沙盒', 'Wikipedia:沙盒', 'Project:Sandbox', 'Help:Sandbox'];
+
+/** URL of the first sandbox page that exists on the wiki shown by `wsUrl`. */
+async function findSandboxPage(wsUrl, origin) {
+  const api = await evalInTab(wsUrl, 'mw.util.wikiScript("api")');
+  const endpoint = new URL(api || '/w/api.php', origin).href;
+  for (const title of SANDBOX_TITLES) {
+    const query = new URLSearchParams({
+      action: 'query',
+      format: 'json',
+      formatversion: '2',
+      titles: title,
+    });
+    let page;
+    try {
+      const response = await fetch(`${endpoint}?${query}`, {signal: AbortSignal.timeout(10000)});
+      page = (await response.json())?.query?.pages?.[0];
+    } catch {
+      continue;
+    }
+    if (!page || page.missing || typeof page.ns !== 'number' || page.ns < 0) continue;
+    const href = await evalInTab(wsUrl, `mw.util.getUrl(${JSON.stringify(page.title)})`);
+    return {title: page.title, url: new URL(href, origin).href};
+  }
+  return null;
+}
+
 /**
- * TARGET_URL (or the legacy SANDBOX_URL) wins; otherwise reuse the wiki tab
- * that is already open in the browser. A missing tab is opened from the URL.
+ * TARGET_URL (or the legacy SANDBOX_URL) wins; otherwise target the sandbox
+ * page of the wiki tab that is already open in the browser.
  */
 async function resolveTarget(targets) {
   const requested = process.env.TARGET_URL || process.env.SANDBOX_URL || '';
@@ -375,14 +424,32 @@ async function resolveTarget(targets) {
     return {pageUrl: opened.url || requested, target: opened, openedTarget: true};
   }
   const pages = targets.filter(item => item.type === 'page' && !NOT_A_PAGE.test(item.url));
+  let wikiTab;
   for (const page of pages) {
     try {
       if (await isWikiTab(page.webSocketDebuggerUrl)) {
-        return {pageUrl: page.url, target: page, openedTarget: false};
+        wikiTab = page;
+        break;
       }
     } catch {}
   }
-  throw new Error('no MediaWiki page found in the browser; open one or set TARGET_URL');
+  if (!wikiTab) {
+    throw new Error(
+      'no MediaWiki page found in the browser; open a wiki tab (its sandbox page is the default target) or set TARGET_URL',
+    );
+  }
+  const origin = new URL(wikiTab.url).origin;
+  const sandbox = await findSandboxPage(wikiTab.webSocketDebuggerUrl, origin);
+  if (!sandbox) {
+    throw new Error(
+      `no sandbox page found on ${origin} (tried ${SANDBOX_TITLES.join(', ')}); set TARGET_URL=<page url> to pick one`,
+    );
+  }
+  const existing = targets.find(item => item.type === 'page' && sameUrl(item.url, sandbox.url));
+  if (existing) return {pageUrl: existing.url, target: existing, openedTarget: false};
+  console.log(`opening the sandbox page: ${sandbox.title} (${sandbox.url})`);
+  const opened = await cdpJson(`/json/new?${encodeURIComponent(sandbox.url)}`, {method: 'PUT'});
+  return {pageUrl: opened.url || sandbox.url, target: opened, openedTarget: true};
 }
 
 async function main() {

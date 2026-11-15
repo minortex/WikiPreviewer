@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'ipe-plugin/**'
+      - 'scripts/ipe-version.mjs'
+      - 'scripts/update-ipe-registry.mjs'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
