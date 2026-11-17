@@ -8,12 +8,13 @@ import {
   editUrlFor,
   highlightSection,
   highlightTemplate,
+  currentView,
   isArticleLink,
-  isArticleView,
   scrollToOccurrence,
   textAtPoint,
 } from './locate'
 import {apiUrl, getMwConfig, getMwUtil} from './mw'
+import {isReadingView, isSourceEditView} from './page-view'
 import {createPreview} from './preview'
 import type {
   EditResult,
@@ -334,7 +335,7 @@ export default {
         void (async () => {
           try {
             await ensureWikiRegistered()
-            if (!isArticleView()) return
+            if (!isReadingView(currentView())) return
             const existing = await queryExistingSession()
             if (existing.session) {
               await adoptSession(existing.session)
@@ -545,8 +546,31 @@ export default {
       preview.schedulePreview()
     }
 
+    /** Leave the source-editor view for the reading view; `external-editor`
+     * makes the reloaded page start editing immediately. */
+    function startFromSourceEdit(): void {
+      let href = location.href
+      try {
+        const util = getMwUtil()
+        const title = getMwConfig<string>('wgPageName')
+        if (!util?.getUrl || !title) throw new Error(translate('mw.util.getUrl is unavailable'))
+        href = util.getUrl(title)
+      } catch {}
+      const url = new URL(href, location.href)
+      for (const key of ['action', 'redlink', 'section', 'veaction']) url.searchParams.delete(key)
+      url.searchParams.set('external-editor', '1')
+      location.assign(url.href)
+    }
+
     async function beginPageEdit(auto = false): Promise<void> {
-      if (session || !isArticleView()) return
+      if (session) return
+      if (isSourceEditView(currentView())) {
+        // The source editor has no rendered article to preview into: switch to
+        // the reading view and let `external-editor=1` start the session there.
+        startFromSourceEdit()
+        return
+      }
+      if (!isReadingView(currentView())) return
       if (!connected) {
         if (auto) {
           pendingAutoEdit = true
@@ -908,7 +932,7 @@ export default {
     pendingConfirm = readPendingConfirm()
     connect()
 
-    if (isArticleView()) {
+    if (isReadingView(currentView()) || isSourceEditView(currentView())) {
       ctx.toolbox?.addButton({
         id: editButtonId,
         group: 'group1',

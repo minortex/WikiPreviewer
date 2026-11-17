@@ -1,5 +1,6 @@
 import type {PointText, ScrollScope, TemplateBlockTarget, TextContext} from './types'
 import {getMwConfig} from './mw'
+import type {ViewInfo} from './page-view'
 
 type CaretDocument = Document & {
   caretRangeFromPoint?: (x: number, y: number) => Range | null
@@ -329,18 +330,13 @@ export function consumeAutoEdit(): boolean {
   return true
 }
 
-/**
- * True when this tab shows the page's normal reading view. History, diff,
- * permalink (oldid), edit/source views and special pages never count.
- */
-export function isArticleView(): boolean {
-  const query = new URL(location.href).searchParams
-  const action = query.get('action') ?? getMwConfig<string>('wgAction')
-  if (action && action !== 'view') return false
-  if (query.has('diff') || query.has('oldid') || query.has('curid')) return false
-  if (query.has('veaction') || query.has('redlink')) return false
-  const namespace = getMwConfig<number>('wgNamespaceNumber')
-  return typeof namespace !== 'number' || namespace >= 0
+/** The current tab's view: its URL plus the MediaWiki globals naming it. */
+export function currentView(): ViewInfo {
+  return {
+    href: location.href,
+    action: getMwConfig<string>('wgAction'),
+    namespace: getMwConfig<number>('wgNamespaceNumber'),
+  }
 }
 
 export function isArticleLink(anchor: HTMLAnchorElement): boolean {
