@@ -1,0 +1,30 @@
+{
+  "manifest_version": 1,
+  "name": "WikiPreviewer",
+  "homepage": "https://github.com/minortex/WikiPreviewer",
+  "base_url": "https://minortex.github.io/WikiPreviewer/ipe-plugin/dev/",
+  "packages": [
+    {
+      "id": "wiki-previewer-ipe",
+      "name": "WikiPreviewer-Plugin",
+      "description": "Edit MediaWiki pages in VSCode with live preview and InPageEdit save.",
+      "author": "minortex",
+      "license": "GPL-3.0-or-later",
+      "version": "1.1.0-dev.r4.fce1b5b3",
+      "loader": {
+        "kind": "module",
+        "entry": "dist/index.mjs?v=1.1.0-dev.r4.fce1b5b3",
+        "main_export": "default"
+      }
+    }
+  ],
+  "maintainers": [
+    {
+      "name": "minortex"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/minortex/WikiPreviewer"
+  }
+}
