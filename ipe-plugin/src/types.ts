@@ -35,12 +35,10 @@ export interface Session {
   wikiPage: IWikiPage
   remoteDirty: boolean
   changed: boolean
-  busy: boolean
   conflict?: boolean
   /** Render text with locally edited templates; undefined means `text`. */
   previewText?: string
   watchlist?: WatchlistAction
-  fullOriginal?: Node[]
 }
 
 export interface PendingConfirm {

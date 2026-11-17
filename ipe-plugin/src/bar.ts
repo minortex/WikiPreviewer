@@ -29,10 +29,12 @@ export interface BarActions {
 export interface BarOptions {
   translate(message: string, ...args: string[]): string
   getSession(): Session | null
+  /** True while a save is in flight or the confirmed save waits for reload. */
+  getBusy(): boolean
   actions: BarActions
 }
 
-export function createBarUi({translate, getSession, actions}: BarOptions) {
+export function createBarUi({translate, getSession, getBusy, actions}: BarOptions) {
   let barResizeObserver: ResizeObserver | null = null
 
   function ensureBarStyle(): void {
@@ -94,21 +96,20 @@ export function createBarUi({translate, getSession, actions}: BarOptions) {
     const session = getSession()
     if (!bar || !session) return
     const submit = bar.querySelector<HTMLButtonElement>('.mwe-ipe-submit')
-    if (submit) submit.disabled = !!session.remoteDirty || !!session.busy
+    if (submit) submit.disabled = !!session.remoteDirty || getBusy()
     if (session.remoteDirty) {
       setStatus(translate('VSCode has unsaved changes; save the file first (Ctrl+S)'))
     }
   }
 
+  /** DOM-only: the session phase decides whether a save is in flight. */
   function setBusy(busy: boolean): void {
-    const session = getSession()
-    if (session) session.busy = !!busy
     const bar = document.querySelector('.mwe-ipe-bar')
     if (!bar) return
     bar.querySelectorAll('button').forEach(button => {
       button.disabled = !!busy
     })
-    if (busy) setStatus(translate('Submitting…'))
+    if (!busy) refreshBar()
   }
 
   function attachBarMetrics(bar: HTMLElement): void {
@@ -215,12 +216,14 @@ export function createBarUi({translate, getSession, actions}: BarOptions) {
     return bar
   }
 
-  /** Drop the bar's observers and the layout variable (session end). */
-  function detach(): void {
+  /** Drop the bar, its observers and the layout variable (session end). */
+  function remove(): void {
     barResizeObserver?.disconnect()
     barResizeObserver = null
+    document.querySelector('.mwe-ipe-bar')?.remove()
+    document.body.classList.remove('mwe-ipe-editing')
     document.documentElement.style.removeProperty('--mwe-ipe-bar-height')
   }
 
-  return {ensureBar, refreshBar, setBusy, setStatus, syncBarHeight, detach}
+  return {ensureBar, refreshBar, setBusy, setStatus, syncBarHeight, remove}
 }

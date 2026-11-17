@@ -3,3 +3,4 @@ node_modules/
 /out/
 ipe-plugin/dist/
 ipe-plugin/registry.json
+/out-ipe/

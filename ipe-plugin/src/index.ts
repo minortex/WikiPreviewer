@@ -15,13 +15,16 @@ import {
 } from './locate'
 import {apiUrl, getMwConfig, getMwUtil} from './mw'
 import {isReadingView, isSourceEditView} from './page-view'
+import {createPendingConfirm} from './pending-confirm'
+import type {PendingConfirmStorage} from './pending-confirm'
 import {createPreview} from './preview'
+import {initialSessionState, reduceSession} from './session-machine'
+import type {SessionEvent} from './session-machine'
 import type {
   EditResult,
   IncomingMessage,
   NavigateEditMessage,
   OutgoingMessage,
-  PendingConfirm,
   Session,
   SessionInfo,
   SessionQueryResult,
@@ -56,9 +59,15 @@ function createSession(
   return {
     remoteDirty: false,
     changed: false,
-    busy: false,
-    conflict: false,
     ...init,
+  }
+}
+
+function sessionStorageOrNull(): PendingConfirmStorage | null {
+  try {
+    return window.sessionStorage
+  } catch {
+    return null
   }
 }
 
@@ -98,9 +107,9 @@ export default {
     })()
     const templatesUsed = (ctx as InPageEdit & {templatesUsed?: TemplatesUsedService}).templatesUsed
 
+    let state = initialSessionState
     let socket: WebSocket | null = null
     let connected = false
-    let session: Session | null = null
     let reconnectTimer: number | undefined
     let disposed = false
 
@@ -111,13 +120,28 @@ export default {
     let sessionQueryPromise: Promise<SessionQueryResult> | null = null
     let sessionQuerySeq = 0
     const sessionWaiters: Record<string, Waiter<SessionQueryResult>> = {}
-    let pendingConfirm: PendingConfirm | null = null
-    let pendingAutoEdit = false
-    let pendingConfirmSent = false
+    const confirmation = createPendingConfirm(
+      sessionStorageOrNull(),
+      PENDING_CONFIRM_KEY,
+      location.origin,
+    )
+
+    const getSession = (): Session | null => state.session
+    const isBusy = (): boolean =>
+      state.phase === 'requesting' || state.phase === 'saving' || state.phase === 'saved'
+
+    /** Apply a lifecycle event and mirror the phase onto the bar's controls. */
+    function dispatch(event: SessionEvent): void {
+      const previous = state
+      state = reduceSession(state, event)
+      if (previous.phase !== state.phase) bar.setBusy(isBusy())
+      bar.refreshBar()
+    }
 
     const bar = createBarUi({
       translate,
-      getSession: () => session,
+      getSession,
+      getBusy: isBusy,
       actions: {
         submit: form => requestSave(form),
         cancel: () => cancelEdit(),
@@ -129,65 +153,26 @@ export default {
         diff: () => showDiff(),
       },
     })
-    const {ensureBar, refreshBar, setBusy, setStatus, syncBarHeight} = bar
+    const {ensureBar, setStatus, syncBarHeight} = bar
     const preview = createPreview({
       translate,
       request: params => api.request(params),
-      getSession: () => session,
+      getSession,
       setStatus,
     })
 
-    function readPendingConfirm(): PendingConfirm | null {
-      try {
-        const raw = sessionStorage.getItem(PENDING_CONFIRM_KEY)
-        if (!raw) return null
-        const value: unknown = JSON.parse(raw)
-        if (!value || typeof value !== 'object') return null
-        const record = value as {sessionId?: unknown; origin?: unknown; revid?: unknown}
-        if (typeof record.sessionId !== 'string') return null
-        // Without a revision id the temp file must not be removed.
-        if (
-          typeof record.revid !== 'number' ||
-          !Number.isInteger(record.revid) ||
-          record.revid <= 0
-        ) {
-          return null
-        }
-        const origin = typeof record.origin === 'string' ? record.origin : location.origin
-        return {sessionId: record.sessionId, origin, revid: record.revid}
-      } catch {
-        return null
-      }
-    }
-
-    function storePendingConfirm(sessionId: string, revid: number): void {
-      pendingConfirm = {sessionId, origin: location.origin, revid}
-      pendingConfirmSent = false
-      try {
-        sessionStorage.setItem(PENDING_CONFIRM_KEY, JSON.stringify(pendingConfirm))
-      } catch {
-        // sessionStorage unavailable; the in-memory marker still works.
-      }
-    }
-
-    function clearPendingConfirm(): void {
-      pendingConfirm = null
-      pendingConfirmSent = false
-      try {
-        sessionStorage.removeItem(PENDING_CONFIRM_KEY)
-      } catch {}
-    }
-
     function sendPendingConfirm(): void {
-      if (!pendingConfirm || pendingConfirmSent) return
-      if (pendingConfirm.origin !== location.origin) return
-      if (send({
-        type: 'save-confirmed',
-        sessionId: pendingConfirm.sessionId,
-        revid: pendingConfirm.revid,
-        origin: location.origin,
-      })) {
-        pendingConfirmSent = true
+      const pending = confirmation.shouldSend()
+      if (!pending) return
+      if (
+        send({
+          type: 'save-confirmed',
+          sessionId: pending.sessionId,
+          revid: pending.revid,
+          origin: location.origin,
+        })
+      ) {
+        confirmation.markSent()
       }
     }
 
@@ -319,6 +304,82 @@ export default {
       else waiter.reject(new Error(msg.error || translate('Site registration failed')))
     }
 
+    function startPendingAutoEdit(queued: boolean): void {
+      if (!queued || state.phase !== 'idle') return
+      void beginPageEdit()
+    }
+
+    /**
+     * Resolve whether this tab already has a session on the extension. Runs on
+     * every socket open: a reloaded page must re-attach, and a live session
+     * must notice when the extension dropped it.
+     */
+    async function resolveOnConnect(): Promise<void> {
+      try {
+        await ensureWikiRegistered()
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        setStatus(translate('Site registration failed: {{ $1 }}', detail), 'error')
+        return
+      }
+      if (!isReadingView(currentView())) return
+      if (state.phase === 'starting') return
+      if (state.phase !== 'idle') {
+        try {
+          const existing = await queryExistingSession()
+          if (!existing.session) {
+            leave()
+            notifyOffline(
+              translate('The extension no longer has this session; editing has been closed.'),
+              translate('Session ended'),
+            )
+          }
+        } catch {}
+        return
+      }
+      // `start` clears the queued auto-edit, so keep the flag for this attempt.
+      const autoQueued = state.autoPending
+      dispatch({type: 'start'})
+      try {
+        const existing = await queryExistingSession()
+        if (existing.session) {
+          await adoptSession(existing.session)
+          return
+        }
+        if (existing.busy) {
+          // The old socket of a refreshing page may not be closed yet.
+          window.setTimeout(() => {
+            void retryAdopt(autoQueued)
+          }, 500)
+          return
+        }
+      } catch (error) {
+        dispatch({type: 'start-failed'})
+        const detail = error instanceof Error ? error.message : String(error)
+        setStatus(translate('Session query failed: {{ $1 }}', detail), 'error')
+        startPendingAutoEdit(autoQueued)
+        return
+      }
+      dispatch({type: 'start-failed'})
+      startPendingAutoEdit(autoQueued)
+    }
+
+    async function retryAdopt(autoQueued: boolean): Promise<void> {
+      if (state.phase !== 'starting') return
+      let existing: SessionQueryResult
+      try {
+        existing = await queryExistingSession(true)
+      } catch {
+        existing = {session: null, busy: false}
+      }
+      if (existing.session) {
+        await adoptSession(existing.session)
+        return
+      }
+      dispatch({type: 'start-failed'})
+      startPendingAutoEdit(autoQueued)
+    }
+
     function connect(): void {
       if (disposed) return
       if (socket && socket.readyState <= WebSocket.OPEN) return
@@ -327,49 +388,7 @@ export default {
         connected = true
         document.getElementById('mwe-offline-notice')?.remove()
         sendPendingConfirm()
-        const startPendingAutoEdit = (): void => {
-          const pending = pendingAutoEdit
-          pendingAutoEdit = false
-          if (pending && !session) void beginPageEdit()
-        }
-        void (async () => {
-          try {
-            await ensureWikiRegistered()
-            if (!isReadingView(currentView())) return
-            const existing = await queryExistingSession()
-            if (existing.session) {
-              await adoptSession(existing.session)
-              return
-            }
-            if (existing.busy) {
-              // 页面刷新时旧 WebSocket 可能还没完成 close；稍后重查一次。
-              window.setTimeout(async () => {
-                try {
-                  const retry = await queryExistingSession(true)
-                  if (retry.session) {
-                    await adoptSession(retry.session)
-                    return
-                  }
-                } catch {}
-                startPendingAutoEdit()
-              }, 500)
-              return
-            }
-          } catch (error) {
-            const detail = error instanceof Error ? error.message : String(error)
-            setStatus(translate('Site registration failed: {{ $1 }}', detail), 'error')
-          }
-          if (session) {
-            preview.restorePage()
-            endSession()
-            notifyOffline(
-              translate('The extension no longer has this session; editing has been closed.'),
-              translate('Session ended'),
-            )
-            return
-          }
-          startPendingAutoEdit()
-        })()
+        void resolveOnConnect()
       })
       socket.addEventListener('close', () => {
         connected = false
@@ -401,23 +420,18 @@ export default {
           return
         }
         if (msg.type === 'save-confirmed-result') {
-          if (pendingConfirm && msg.sessionId === pendingConfirm.sessionId && msg.ok) {
-            clearPendingConfirm()
-          }
+          if (confirmation.current?.sessionId === msg.sessionId && msg.ok) confirmation.clear()
           return
         }
-        if (!session || msg.sessionId !== session.id) return
+        if (!state.session || msg.sessionId !== state.session.id) return
         if (msg.type === 'refresh-preview') {
-          session.previewText = msg.previewText
+          dispatch({type: 'preview', previewText: msg.previewText})
           preview.schedulePreview()
         } else if (msg.type === 'update') {
-          session.text = msg.text
-          session.previewText = msg.previewText
-          session.changed = true
+          dispatch({type: 'update', text: msg.text, previewText: msg.previewText})
           preview.schedulePreview()
         } else if (msg.type === 'state') {
-          session.remoteDirty = !!msg.dirty
-          refreshBar()
+          dispatch({type: 'remote-dirty', dirty: !!msg.dirty})
         } else if (msg.type === 'scroll') {
           if (msg.kind === 'section') {
             highlightSection(msg.section)
@@ -437,20 +451,21 @@ export default {
             if (!moved && msg.template) highlightTemplate(msg.template)
           }
         } else if (msg.type === 'save') {
+          // Either this tab submitted and now receives the document text
+          // (`requesting`), or the extension saved from its side (`active`).
+          if (state.phase !== 'active' && state.phase !== 'requesting') return
           setStatus(translate('Submitting…'))
+          dispatch({type: 'saving'})
           void saveEdit(msg.text, msg.summary, msg.minor, msg.requestId)
         } else if (msg.type === 'finish') {
-          if (msg.result === 'closed') preview.restorePage()
-          endSession()
+          leave(msg.result !== 'saved')
           if (msg.result !== 'closed') closeIfOpenedHere()
         } else if (msg.type === 'editor-closed') {
-          preview.restorePage()
-          endSession()
+          leave()
           closeIfOpenedHere()
           notifyOffline(translate('Exited editing mode.'), translate('Editor closed'))
         } else if (msg.type === 'preempted') {
-          preview.restorePage()
-          endSession()
+          leave()
           notifyOffline(
             translate('Editing continued in another tab.'),
             translate('Session transferred'),
@@ -467,12 +482,20 @@ export default {
       return false
     }
 
-    function endSession(): void {
-      session = null
+    /**
+     * Single teardown path: machine state first, then preview, bar and cache.
+     * `restorePreview` stays false when the page is about to reload, so the
+     * saved content does not flash back to the pre-edit revision.
+     */
+    function leave(restorePreview = true): void {
+      if (state.phase === 'idle') return
+      state = reduceSession(state, {type: 'ended'})
+      sessionQueryPromise = null
       preview.cancel()
-      bar.detach()
-      document.querySelector('.mwe-ipe-bar')?.remove()
-      document.body.classList.remove('mwe-ipe-editing')
+      if (restorePreview) preview.restorePage()
+      else preview.discardOriginal()
+      bar.setBusy(false)
+      bar.remove()
     }
 
     /** Only tabs opened by the extension for editing can be closed by script. */
@@ -492,13 +515,15 @@ export default {
         reject(new Error(translate('Extension did not respond to the session query')))
       }, 8000)
       sessionWaiters[requestId] = {resolve, reject, timer}
-      if (!send({
-        type: 'session-query',
-        requestId,
-        origin: location.origin,
-        title: getMwConfig<string>('wgPageName'),
-        windowId,
-      })) {
+      if (
+        !send({
+          type: 'session-query',
+          requestId,
+          origin: location.origin,
+          title: getMwConfig<string>('wgPageName'),
+          windowId,
+        })
+      ) {
         clearTimeout(timer)
         delete sessionWaiters[requestId]
         reject(new Error(translate('Extension not connected')))
@@ -521,24 +546,28 @@ export default {
     }
 
     async function adoptSession(info: SessionInfo): Promise<void> {
-      if (session) return
+      if (state.phase !== 'starting' || state.session) return
       let wikiPage: IWikiPage
       try {
         wikiPage = info.revid
           ? await ctx.wikiPage.newFromRevision(info.revid)
           : await ctx.wikiPage.newFromTitle(info.title, false)
       } catch (error) {
+        dispatch({type: 'start-failed'})
         const detail = error instanceof Error ? error.message : String(error)
         setStatus(translate('Failed to resume the session: {{ $1 }}', detail), 'error')
         return
       }
-      session = createSession({
-        id: info.sessionId,
-        title: info.title,
-        text: info.text,
-        wikiPage,
-        remoteDirty: !!info.dirty,
-        previewText: info.previewText,
+      dispatch({
+        type: 'started',
+        session: createSession({
+          id: info.sessionId,
+          title: info.title,
+          text: info.text,
+          wikiPage,
+          remoteDirty: !!info.dirty,
+          previewText: info.previewText,
+        }),
       })
       ensureBar()
       document.body.classList.remove('ipe-modal-no-scroll')
@@ -563,7 +592,7 @@ export default {
     }
 
     async function beginPageEdit(auto = false): Promise<void> {
-      if (session) return
+      if (state.phase !== 'idle') return
       if (isSourceEditView(currentView())) {
         // The source editor has no rendered article to preview into: switch to
         // the reading view and let `external-editor=1` start the session there.
@@ -572,18 +601,16 @@ export default {
       }
       if (!isReadingView(currentView())) return
       if (!connected) {
-        if (auto) {
-          pendingAutoEdit = true
-          return
-        }
-        notifyOffline()
+        if (auto) dispatch({type: 'auto-pending'})
+        else notifyOffline()
         return
       }
-      pendingAutoEdit = false
+      dispatch({type: 'start'})
       try {
         await ensureWikiRegistered()
         const existing = await queryExistingSession(true)
         if (existing.busy) {
+          dispatch({type: 'start-failed'})
           notifyOffline(
             translate(
               'This page is already being edited in another browser window or VSCode session. Close that session first.',
@@ -600,12 +627,13 @@ export default {
         if (!title) throw new Error(translate('Unable to read the current page title'))
         const wikiPage = await ctx.wikiPage.newFromTitle(title, false)
         const revision = wikiPage.revisions[0]
-        session = createSession({
+        const session = createSession({
           id: `s${Date.now()}`,
           title,
           text: revision?.content || '',
           wikiPage,
         })
+        dispatch({type: 'started', session})
         ensureBar()
         document.body.classList.remove('ipe-modal-no-scroll')
         setStatus(translate('Editing in VSCode; save the file to refresh the preview'))
@@ -621,6 +649,7 @@ export default {
           wiki: location.origin,
         })
       } catch (error) {
+        dispatch({type: 'start-failed'})
         const detail = error instanceof Error ? error.message : String(error)
         const message = translate(
           'Failed to start editing: {{ $1 }}. Make sure the VSCode extension is running and the web plugin is up to date.',
@@ -632,11 +661,13 @@ export default {
     }
 
     function showTemplatesUsed(): void {
+      const session = state.session
       if (!session) return
       void templatesUsed?.showModal({title: session.title})
     }
 
     function showDiff(): void {
+      const session = state.session
       if (!session) return
       const from = session.wikiPage.revisions[0]?.content || ''
       if (from === session.text) return
@@ -650,6 +681,7 @@ export default {
     }
 
     function showImagesUsed(): void {
+      const session = state.session
       if (!session || !ctx.modal) return
       fetch(
         `${apiUrl()}?action=parse&format=json&formatversion=2&prop=images&page=${encodeURIComponent(session.title)}`,
@@ -686,7 +718,8 @@ export default {
     }
 
     function cancelEdit(): void {
-      if (!session) return
+      const session = state.session
+      if (state.phase !== 'active' || !session) return
       const pending = session.remoteDirty || session.changed
       if (
         pending &&
@@ -703,19 +736,19 @@ export default {
         sessionId: session.id,
         result: pending ? 'discarded' : 'unchanged',
       })
-      preview.restorePage()
-      endSession()
+      leave()
       closeIfOpenedHere()
     }
 
     function requestSave(form: SaveForm): void {
-      if (!session) return
+      const session = state.session
+      if (state.phase !== 'active' || !session) return
       if (session.remoteDirty) {
         setStatus(translate('VSCode has unsaved changes; save the file first (Ctrl+S)'), 'error')
         return
       }
-      setBusy(true)
-      session.watchlist = parseWatchlist(form.watchlist)
+      dispatch({type: 'watchlist', watchlist: parseWatchlist(form.watchlist)})
+      dispatch({type: 'request-save'})
       setStatus(translate('Saving the file…'))
       send({
         type: 'request-save',
@@ -739,16 +772,17 @@ export default {
     }
 
     async function latestPageForSession(): Promise<IWikiPage | null> {
+      const session = state.session
       if (!session) return null
       return ctx.wikiPage.newFromTitle(session.title, false, undefined, true)
     }
 
     function reportConflict(latest: IWikiPage, message: string): boolean {
+      const session = state.session
       if (!session) return false
       const revision = latest.revisions[0]
       if (!revision) return false
-      session.wikiPage = latest
-      session.conflict = true
+      dispatch({type: 'conflict', wikiPage: latest})
       send({
         type: 'conflict',
         sessionId: session.id,
@@ -772,7 +806,7 @@ export default {
       latest: IWikiPage | null
       changedRemotely: boolean
     }> {
-      const baseRevid = session?.wikiPage.revisions[0]?.revid
+      const baseRevid = state.session?.wikiPage.revisions[0]?.revid
       let latest: IWikiPage | null = null
       try {
         latest = await latestPageForSession()
@@ -794,6 +828,7 @@ export default {
       summary: string | undefined,
       minor: boolean | undefined,
     ): Promise<EditResult> {
+      const session = state.session
       if (!session) return {}
       const result = await session.wikiPage.edit({
         text,
@@ -810,8 +845,9 @@ export default {
       revid: number,
       summary: string | undefined,
       minor: boolean | undefined,
+      text: string,
     ): void {
-      storePendingConfirm(sessionId, revid)
+      confirmation.set(sessionId, revid)
       send({type: 'save-result', sessionId, requestId, ok: true})
       send({
         type: 'finish',
@@ -820,13 +856,17 @@ export default {
         summary: summary || '',
         minor: !!minor,
       })
+      dispatch({type: 'saved', text})
       setStatus(translate('Saved; reloading and waiting for confirmation…'), 'ok')
-      setBusy(false)
       window.setTimeout(() => location.reload(), 800)
     }
 
-    function failSave(sessionId: string, requestId: string | undefined, message: string): void {
-      setBusy(false)
+    function failSave(
+      sessionId: string,
+      requestId: string | undefined,
+      message: string,
+    ): void {
+      dispatch({type: 'save-failed'})
       send({type: 'save-result', sessionId, requestId, ok: false, error: message})
     }
 
@@ -836,7 +876,6 @@ export default {
       error: unknown,
     ): Promise<void> {
       const message = error instanceof Error ? error.message : String(error)
-      setBusy(false)
       send({type: 'save-result', sessionId, requestId, ok: false, error: message})
       let conflictSent = false
       if (isEditConflict(error)) {
@@ -845,6 +884,7 @@ export default {
           if (latest) conflictSent = reportConflict(latest, message)
         } catch {}
       }
+      dispatch({type: 'save-failed'})
       if (!conflictSent) {
         setStatus(translate('Save failed: {{ $1 }}', message), 'error')
       }
@@ -856,24 +896,22 @@ export default {
       minor: boolean | undefined,
       requestId?: string,
     ): Promise<void> {
-      if (!session) return
+      const session = state.session
+      if (state.phase !== 'saving' || !session) return
       const sessionId = session.id
+      const title = session.title
       try {
         const {baseRevid, latest, changedRemotely} = await latestForSave()
         if (changedRemotely) {
-          setBusy(false)
           reportConflict(latest!, translate('The page was changed by someone else.'))
-          send({type: 'save-result', sessionId, requestId, ok: false, error: '编辑冲突'})
+          failSave(sessionId, requestId, '编辑冲突')
           return
         }
-        if (latest) session.wikiPage = latest
+        if (latest) dispatch({type: 'wiki-page', wikiPage: latest})
         const edit = await applyEdit(text, summary, minor)
-        session.text = text
-        session.changed = false
-        session.conflict = false
         // The temp file may only be cleaned up once a revision id proves the
         // save landed; anything else keeps it for a retry.
-        const revid = await api.savedRevid(session.title, text, edit, baseRevid)
+        const revid = await api.savedRevid(title, text, edit, baseRevid)
         if (revid === undefined) {
           const message = translate(
             'The save was submitted but no revision id could be confirmed; the temp file was kept',
@@ -882,13 +920,14 @@ export default {
           setStatus(translate('Save unconfirmed: {{ $1 }}', message), 'error')
           return
         }
-        completeSave(sessionId, requestId, revid, summary, minor)
+        completeSave(sessionId, requestId, revid, summary, minor, text)
       } catch (error) {
         await handleSaveError(sessionId, requestId, error)
       }
     }
 
     function onClick(event: MouseEvent): void {
+      const session = state.session
       if (!session) return
       const target = event.target instanceof Element ? event.target : null
       if (target?.closest('#mw-content-text') == null) return
@@ -929,7 +968,6 @@ export default {
     }
 
     const editButtonId = 'vscode-editor-page'
-    pendingConfirm = readPendingConfirm()
     connect()
 
     if (isReadingView(currentView()) || isSourceEditView(currentView())) {
@@ -951,7 +989,6 @@ export default {
       disposed = true
       connected = false
       clearTimeout(reconnectTimer)
-      preview.cancel()
       for (const requestId of Object.keys(registerWaiters)) {
         clearTimeout(registerWaiters[requestId].timer)
         delete registerWaiters[requestId]
@@ -967,8 +1004,7 @@ export default {
       document.removeEventListener('click', onClick, true)
       window.removeEventListener('resize', syncBarHeight)
       ctx.toolbox?.removeButton(editButtonId)
-      preview.restorePage()
-      endSession()
+      leave()
       document.getElementById(BAR_STYLE_ID)?.remove()
       document.getElementById('mwe-offline-notice')?.remove()
     })

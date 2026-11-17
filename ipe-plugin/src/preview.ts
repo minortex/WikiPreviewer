@@ -11,6 +11,8 @@ export interface PreviewOptions {
 export function createPreview({translate, request, getSession, setStatus}: PreviewOptions) {
   let previewTimer: number | undefined
   let previewSeq = 0
+  /** Page DOM before the first preview of a session, restored on teardown. */
+  let original: {sessionId: string; nodes: Node[]} | null = null
 
   function executeScripts(root: Element): void {
     root.querySelectorAll<HTMLScriptElement>('script').forEach(old => {
@@ -27,10 +29,10 @@ export function createPreview({translate, request, getSession, setStatus}: Previ
 
   function applyFull(html: string): void {
     const root = document.querySelector('#mw-content-text')
-    if (!root) return
     const session = getSession()
-    if (session && !session.fullOriginal) {
-      session.fullOriginal = Array.from(root.childNodes)
+    if (!root || !session) return
+    if (!original || original.sessionId !== session.id) {
+      original = {sessionId: session.id, nodes: Array.from(root.childNodes)}
     }
     const temp = document.createElement('div')
     temp.innerHTML = html
@@ -41,13 +43,17 @@ export function createPreview({translate, request, getSession, setStatus}: Previ
     if (mw?.hook && jQuery) mw.hook('wikipage.content').fire(jQuery(root))
   }
 
+  /** Safe after the session is gone: the snapshot is owned here, not by it. */
   function restorePage(): void {
+    if (!original) return
     const root = document.querySelector('#mw-content-text')
-    const session = getSession()
-    if (root && session?.fullOriginal) {
-      root.replaceChildren(...session.fullOriginal)
-      session.fullOriginal = undefined
-    }
+    if (root) root.replaceChildren(...original.nodes)
+    original = null
+  }
+
+  /** Drop the snapshot without touching the DOM (the page is about to reload). */
+  function discardOriginal(): void {
+    original = null
   }
 
   function schedulePreview(): void {
@@ -98,5 +104,5 @@ export function createPreview({translate, request, getSession, setStatus}: Previ
     previewSeq++
   }
 
-  return {schedulePreview, renderPreview, restorePage, cancel}
+  return {schedulePreview, renderPreview, restorePage, discardOriginal, cancel}
 }
